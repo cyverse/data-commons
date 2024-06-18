@@ -1,0 +1,93 @@
+Datasets with No Titles Found that also do not have a datacite.title field
+
+No title found
+{
+    "Creator": "Bonnie Hurwitz",
+    "Description": "Artificial metagenomic reads from mock communities.  Data from https://www.imicrobe.us/#/projects/265  The raw sequence data from the staggered mock community (SRP115095 in project accession PRJNA397434) were used to develop simulated metagenomes. We used the known staggered mock community abundance profile to generate a simulated metagenome using GemSim (454 sequencing) with 0.5, 1, 5, and 10 million reads based on the relative abundance of organisms in the staggered mock community. We developed four simulated metagenomes to test the effect of changing the dominant organism abundance and genetic composition including: 10 million reads from the staggered mock community (mock 1), the mock community with alterations in a few abundant species (mock 2), the mock community with many alterations in abundant species (mock 3), and mock 3 with additional sequences from archaea to further alter the genetic composition (mock 4). The same community profiles were used to generate paired-end illumina dataset (100 million reads), using GemSim (illumina v4 error model). Finally, using SimLord, the community profiles were used to generate simulated third generation sequencing datasets (Pacific Bioscience SMRT sequencing - 1 million reads). SimLord default parameters were used to generate those simulated datasets.",
+    "Identifier": "10.7946/MQ0G",
+    "PublicationYear": "2018",
+    "Publisher": "CyVerse Data Commons",
+    "ResourceType": "mock metagenomic data",
+    "Rights": "ODC PDDL",
+    "Subject": [
+        "Bacteria",
+        "Metagenomics",
+        "artificial data"
+    ],
+    "Title": "Staggered Mock Metagenomic Communities",
+    "date_created": "2018-12-12 11:24:50",
+    "date_modified": "2020-02-20 15:05:33",
+    "de_path": "/iplant/home/shared/commons_repo/curated/Hurwitz_imicrobe_mock_communities_2018",
+    "identifierType": "DOI"
+}
+
+No title found
+{
+    "date_created": "2020-03-03 12:16:57",
+    "date_modified": "2020-03-04 09:12:38",
+    "de_path": "/iplant/home/shared/commons_repo/curated/Miao_Schnable_sorghumHighThroughputPhenotyping_2017"
+}
+
+
+
+Datasets with title fields (and not datacite.title field) that use ARK identifiers
+
+    Whole-genome sequence of phages p000v and p000y infecting the bacterial pathogen Shigatoxigenic Escherichia coli: 10.7946/P2HP89
+    {
+        "AlternateIdentifier": [
+            "/b7946/p2hp89",
+            ""
+        ],
+        "Analysis_tool": "",
+        "Description": "We report here the genome sequence and morphological characterization of phages p000v and p000y that infect the bacterial pathogen Shigatoxigenic Escherichia coli O157:H7 and which are potential candidates for phage therapy against such pathogen. ",
+        "Identifier": "10.7946/P2HP89",
+        "RelatedIdentifier": "",
+        "ResourceType": "Sequences annotation and TEM",
+        "Rights": "ODC PDDL",
+        "Subject": [
+            "gene sequencing",
+            "morphology",
+            "genome",
+            "bacteriophage",
+            "bacteriophage therapy"
+        ],
+        "alternateIdentifierType": [
+            "ARK",
+            ""
+        ],
+        "analysis_tool": "http://ivirus.us/using-ivirus-tools/",
+        "compressed_data": "true",
+        "contributorName": "Cristina Howard-Varona",
+        "contributorType": "Researcher",
+        "creatorAffiliation": "The Ohio State University",
+        "creatorNameIdentifier": "",
+        "datacite.creator": "Dean Vik",
+        "datacite.publicationyear": [
+            "2018",
+            ""
+        ],
+        "datacite.publisher": "CyVerse Data Commons",
+        "datacite.resourcetype": "Dataset",
+        "date_created": "2018-10-08 13:17:32",
+        "date_modified": "2020-02-20 15:05:33",
+        "de_path": "/iplant/home/shared/commons_repo/curated/Howard-Varona_and_Vik_et_al_Phage_therapy_2018",
+        "descriptionType": "Abstract",
+        "external_data_link": "http://datacommons.cyverse.org/browse/iplant/home/shared/iVirus/Howard-Varona_and_Vik_et_al_Phage_Therapy_2018",
+        "geoLocationBox": "",
+        "geoLocationPlace": "",
+        "geoLocationPoint": "",
+        "identifier": "10.7946/P2HP89",
+        "identifierType": "DOI",
+        "is_deprecated": "false",
+        "relatedIdentifierType": "",
+        "relationType": "",
+        "reuse_or_citation_conditions": "",
+        "title": "Whole-genome sequence of phages p000v and p000y infecting the bacterial pathogen Shigatoxigenic Escherichia coli"
+    }
+
+
+
+
+Total ARK identifiers found: 17
+Total datasets with no titles found: 18
+Total datasets with datacite.title fields: 16
