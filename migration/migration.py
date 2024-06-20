@@ -1,3 +1,4 @@
+import sys
 from CKAN_Testing import main as ckan
 from DE_API_Testing import main3 as de
 import json
@@ -76,21 +77,29 @@ def get_title(dataset_metadata: dict):
         str: The title of the dataset.
     """
 
-    # Check if the dataset is a datacite dataset
-    is_datacite = 'datacite.creator' in dataset_metadata
+    # Keep trying to get the title from different keys in the dataset metadata
+    try:
+        title = dataset_metadata['title']
+    except KeyError:
+        pass
 
-    # Check if the dataset has a 'datacite.title' key. If it does, use that as the title. Otherwise, use the 'title' key.
-    if is_datacite:
-        try:
-            return dataset_metadata['datacite.title']
-        except KeyError:
-            return dataset_metadata['title']
-    ## If the dataset does not have a 'datacite.title' key, use the 'title' key or 'Title' key.
-    else:
-        try:
-            return dataset_metadata['title']
-        except KeyError:
-            return dataset_metadata['Title']
+    try:
+        title = dataset_metadata['Title']
+    except KeyError:
+        pass
+
+    try:
+        title = dataset_metadata['datacite.title']
+    except KeyError:
+        pass
+
+    # If the title is a list, join the elements with a comma
+    if isinstance(title, list):
+        return ", ".join(title)
+
+    # Return the title
+    return title
+
 
 
 def get_author(dataset_metadata: dict):
@@ -104,10 +113,10 @@ def get_author(dataset_metadata: dict):
     """
 
     # Check if the dataset is a datacite dataset
-    is_datacite = 'datacite.creator' in dataset_metadata
+    # is_datacite = 'datacite.creator' in dataset_metadata
 
     # Check if the dataset has a 'datacite.creator' key. If it does, use that as the author.
-    if is_datacite:
+    try:
         # If the author is a string, return the author. Otherwise, join the authors with a comma.
         if isinstance(dataset_metadata['datacite.creator'], str):
             return dataset_metadata['datacite.creator']
@@ -115,7 +124,7 @@ def get_author(dataset_metadata: dict):
             return ', '.join(dataset_metadata['datacite.creator'])
 
     # If the dataset does not have a 'datacite.creator' key...
-    else:
+    except KeyError:
         # If the author is a string, return the author. Otherwise, join the authors with a comma.
         try:
             if isinstance(dataset_metadata['creator'], str):
@@ -138,10 +147,11 @@ def get_publication_year(dataset_metadata: dict):
     """
 
     # Check if the dataset is a datacite dataset
-    is_datacite = 'datacite.creator' in dataset_metadata
+    # is_datacite = 'datacite.creator' in dataset_metadata
+
 
     # Check if the dataset has a 'datacite.publicationyear' key. If it does, use that as the publication year.
-    if is_datacite:
+    try:
         # If the publication year is a string, return the first four characters of the string.
         if isinstance(dataset_metadata['datacite.publicationyear'], str):
             return dataset_metadata['datacite.publicationyear'][:4]
@@ -150,12 +160,21 @@ def get_publication_year(dataset_metadata: dict):
             return dataset_metadata['datacite.publicationyear'][0][:4]
 
     # If the dataset does not have a 'datacite.publicationyear' key, use the 'publicationYear' key.
-    else:
-        # If the publication year is a string, return the publication year.
-        if isinstance(dataset_metadata['publicationYear'], str):
-            return dataset_metadata['publicationYear']
-        else:
-            return dataset_metadata['publicationYear'][0][:4]
+    except KeyError:
+        try:
+            # If the publication year is a string, return the publication year.
+            if isinstance(dataset_metadata['publicationYear'], str):
+                return dataset_metadata['publicationYear']
+            else:
+                return dataset_metadata['publicationYear'][0][:4]
+
+        # If the dataset does not have a 'publicationYear' key, use the 'PublicationYear' key.
+        except:
+            # If the publication year is a string, return the publication year.
+            if isinstance(dataset_metadata['PublicationYear'], str):
+                return dataset_metadata['PublicationYear']
+            else:
+                return dataset_metadata['PublicationYear'][0][:4]
 
 
 def get_extras(dataset_metadata: dict):
@@ -195,7 +214,7 @@ def get_extras(dataset_metadata: dict):
     return extras
 
 
-def migrate_dataset_and_files(dataset_metadata: dict):
+def migrate_dataset_and_files(dataset_metadata: dict, title=None):
     dataset_metadata = clean_dataset_metadata(dataset_metadata)
     # pretty_print(dataset_metadata)
     # print("\n\n\n")
@@ -227,9 +246,14 @@ def migrate_dataset_and_files(dataset_metadata: dict):
     }
 
     # Get the title of the dataset
-    title = get_title(dataset_metadata).strip()
+    if title is None:
+        title = get_title(dataset_metadata).strip()
     ## Set the 'name' key to the title of the dataset with spaces replaced by hyphens and parentheses removed
-    data['name'] = title.lower().replace(' ', '-').replace('(', '').replace(')', '').replace('.', '-').replace('"', '').replace('/', '-')
+    name = title.lower().replace(' ', '-').replace('(', '').replace(')', '').replace('.', '-').replace('"', '').replace('/', '-').replace(',', '').replace(':', '').replace("*", "-").replace("'", "-").replace('&', '-')
+    ## If the length of the name is greater than 100, truncate it to 100 characters
+    if len(name) > 100:
+        name = name[:100]
+    data['name'] = name
     ## Set the 'title' key to the title of the dataset
     data['title'] = title
 
@@ -244,26 +268,46 @@ def migrate_dataset_and_files(dataset_metadata: dict):
     # Set the 'author' key to the creator of the dataset
     data['author'] = get_author(dataset_metadata)
 
-    # Set the keys for the license depending on the license specified in the dataset metadata
-    if "ODC PDDL" in dataset_metadata['rights']:
-        data['license_id'] = "odc-pddl"
-        data['license_title'] = "Open Data Commons Public Domain Dedication and License (PDDL)"
-        data['license_url'] = "http://www.opendefinition.org/licenses/odc-pddl"
-    elif "CC0" in dataset_metadata['rights']:
-        data['license_id'] = "cc-zero"
-        data['license_title'] = "Creative Commons CCZero"
-        data['license_url'] = "http://www.opendefinition.org/licenses/cc-zero"
-    else:
-        data['license_id'] = "notspecified"
-        data['license_title'] = "License not specified"
+    # Try-Except block to check whether the key is 'rights' or 'Rights' in the dataset metadata
+    try:
+        # Set the keys for the license depending on the license specified in the dataset metadata
+        if "ODC PDDL" in dataset_metadata['rights']:
+            data['license_id'] = "odc-pddl"
+            data['license_title'] = "Open Data Commons Public Domain Dedication and License (PDDL)"
+            data['license_url'] = "http://www.opendefinition.org/licenses/odc-pddl"
+        elif "CC0" in dataset_metadata['rights']:
+            data['license_id'] = "cc-zero"
+            data['license_title'] = "Creative Commons CCZero"
+            data['license_url'] = "http://www.opendefinition.org/licenses/cc-zero"
+        else:
+            data['license_id'] = "notspecified"
+            data['license_title'] = "License not specified"
+    except KeyError:
+        # Set the keys for the license depending on the license specified in the dataset metadata
+        if "ODC PDDL" in dataset_metadata['Rights']:
+            data['license_id'] = "odc-pddl"
+            data['license_title'] = "Open Data Commons Public Domain Dedication and License (PDDL)"
+            data['license_url'] = "http://www.opendefinition.org/licenses/odc-pddl"
+        elif "CC0" in dataset_metadata['Rights']:
+            data['license_id'] = "cc-zero"
+            data['license_title'] = "Creative Commons CCZero"
+            data['license_url'] = "http://www.opendefinition.org/licenses/cc-zero"
+        else:
+            data['license_id'] = "notspecified"
+            data['license_title'] = "License not specified"
 
     # If there is a 'subject' key in the dataset metadata, add it to the tags depending on whether its a string or a list
     if 'subject' in dataset_metadata:
         if isinstance(dataset_metadata['subject'], str):
-            subjects = dataset_metadata['subject'].split(',')
+            subjects = dataset_metadata['subject'].replace("(", "").replace(")", "").replace("&", "-").split(',')
             data['tags'] = [{'name': subject} for subject in subjects]
         else:
-            data['tags'] = [{'name': subject} for subject in dataset_metadata['subject']]
+            data['tags'] = [{'name': subject.replace("(", "").replace(")", "").replace("&", "-").replace("#", "-")} for subject in dataset_metadata['subject']]
+            # Go through each tag in the tags list and check if any of them are separated by a comma. If they are, split them into separate tags
+            for tag in data['tags']:
+                if ', ' in tag['name']:
+                    data['tags'].remove(tag)
+                    data['tags'] += [{'name': t.strip()} for t in tag['name'].split(',')]
 
     # If there is a 'version' or 'Version' key in the dataset metadata, add it to the data dictionary
     if 'version' in dataset_metadata:
@@ -282,14 +326,23 @@ def migrate_dataset_and_files(dataset_metadata: dict):
     # Get the dataset ID
     dataset_id = dataset_response['result']['id']
     print(f'Dataset ID: {dataset_id}')
-    print('\n')
 
 
     # --------------------------------- FILES ---------------------------------
 
+    print("\nMigrating Files...")
 
     # Get the list of files in the dataset
     files = de.get_files(dataset_metadata['de_path'])
+    # Get the total number of files in the dataset
+    num_files = files['total']
+    print(f"Number of Files: {num_files}")
+    if num_files > 20:
+        cont = input("Continue? (y/n): ")
+        if cont == 'n':
+            return
+    # Pass the number of files to the get_files function to get all the files
+    files = de.get_files(dataset_metadata['de_path'], limit=num_files)
     # print('\n\n\nFiles without metadata: ')
     # pretty_print(files)
 
@@ -342,9 +395,14 @@ def pretty_print(json_data):
 
 if __name__ == '__main__':
 
-    # ckan.delete_all_datasets_in_organization('tanmay-s-playground')
+    # delete = input("Delete all datasets in organization? (y/n): ")
+    #
+    # if delete == 'y':
+    #     ckan.delete_all_datasets_in_organization('tanmay-s-playground')
+
 
     de_datasets: list[dict] = de.get_datasets()
+
     # pretty_print(de_datasets)
 
     # print("\n\n\n")
@@ -356,9 +414,20 @@ if __name__ == '__main__':
 
     count = 0
 
-    # Iterate through each dataset in the discovery environment to see if they exist in CKAN and whether they need to be updated
+    # Iterate through each dataset in the discovery environment to see
+    # if they exist in CKAN and whether they need to be updated
     for de_dataset in de_datasets:
-        if 3 < count < 10:
+        new_ckan_title = None
+        # if count == 11:
+        #     print("Skipping #11: Burning Vehicle Test 01 (2)\n")
+        #     count += 1
+        #     continue
+        #     new_ckan_title = "Burning Vehicle Test 02 - "
+        if count == 205:
+            print("Skipping #205: No metadata dataset")
+            count += 1
+            continue
+        if 0 < count < 300:
             # Get the metadata for the dataset in the discovery environment
             de_dataset_metadata = de.get_all_metadata_dataset(de_dataset)
             ## print("Discovery Environment Dataset Metadata")
@@ -372,26 +441,28 @@ if __name__ == '__main__':
             for ckan_dataset in ckan_datasets:
                 # pretty_print(ckan_dataset)
                 # Get the title of the dataset in CKAN
-                ckan_dataset_title = ckan_dataset['result']['title'].strip()
+                ckan_dataset_title = ckan_dataset['title'].strip()
                 # print(f"CKAN Dataset Title: {ckan_dataset_title}")
                 if de_dataset_title == ckan_dataset_title:
-                    print(f"Matched: {de_dataset_title}")
+                    print(f"{count} - Matched: {de_dataset_title}")
 
                     # Get the last modified date for the dataset in the discovery environment
                     last_modified_de = de_dataset_metadata['date_modified']
 
                     # Get the last modified date for the dataset in CKAN
-                    for extra in ckan_dataset['result']['extras']:
+                    for extra in ckan_dataset['extras']:
                         if extra['key'] == 'Date last modified in discovery environment':
                             last_modified_ckan = extra['value']
 
                     # If the dataset in the discovery environment has been modified update the dataset in CKAN
                     # by deleting the old dataset and creating a new one with the updated metadata and files
                     if last_modified_de != last_modified_ckan:
-                        ckan_dataset_id = ckan_dataset['result']['id']
+                        ckan_dataset_id = ckan_dataset['id']
                         print("Rewriting")
                         ckan.delete_dataset(ckan_dataset_id)
-                        migrate_dataset_and_files(de_dataset_metadata)
+                        migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
+                    else:
+                        print("\tNo Changes Made. Skipping...")
 
                     # Break out of the loop if the dataset is found in CKAN
                     break
@@ -400,8 +471,9 @@ if __name__ == '__main__':
 
             # If the dataset does not exist in CKAN, create a new dataset
             else:
-                print(f"Creating New Dataset in CKAN: {de_dataset_title}")
-                migrate_dataset_and_files(de_dataset_metadata)
+                print(f"{count} - Creating New Dataset in CKAN: {de_dataset_title}")
+                migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
+                print("Creation Complete.")
 
             print("\n")
         count += 1

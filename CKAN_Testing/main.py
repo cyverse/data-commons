@@ -166,44 +166,51 @@ def list_datasets(organization=None, group=None):
     List all datasets in the CKAN instance for a specific organization and/or group.
 
     This function retrieves a list of all datasets in the CKAN instance, filtered by organization
-    or group if specified. It sends a GET request to the CKAN API and returns the dataset metadata.
-    This is used in the migration process to check whether a dataset from the discovery environment already exists in CKAN.
+    or group if specified. It sends multiple GET requests to the CKAN API to handle pagination and
+    returns the dataset metadata. This is used in the migration process to check whether a dataset
+    from the discovery environment already exists in CKAN.
 
     Args:
         organization (str, optional): The name or ID of the organization.
         group (str, optional): The name or ID of the group.
 
     Returns:
-        dict: The response from the CKAN API, containing a list of dataset IDs.
+        list: A list of dictionaries, each containing the metadata of a dataset.
     """
-    url = f'{ckan_url}/api/3/action/package_list'  # API endpoint for listing datasets
     headers = {'Authorization': api_key}  # API key for authorization
     output = []
+    limit = 100  # Number of datasets to retrieve per request
+    offset = 0  # Offset for pagination
 
-    if organization is not None:
-        # If an organization is specified, get the list of datasets for that organization
-        url = f'{ckan_url}/api/3/action/organization_show'
-        response = requests.get(url, headers=headers, params={'id': organization, 'include_datasets': True})
-        response = response.json()
-        response = response['result']['packages']
-        for dataset in response:
-            output.append(get_dataset_info(dataset['id']))
-        return output
+    while True:
+        params = {
+            'rows': limit,
+            'start': offset,
+        }
 
-    elif group is not None:
-        # If a group is specified, get the list of datasets for that group
-        url = f'{ckan_url}/api/3/action/group_show'
-        response = requests.get(url, headers=headers, params={'id': group, 'include_datasets': True})
-        response = response.json()
-        response = response['result']['packages']
-        for dataset in response:
-            output.append(get_dataset_info(dataset['id']))
-        return output
+        # Add filters for organization and group if provided
+        if organization:
+            params['q'] = f'organization:{organization}'
+        if group:
+            params['q'] = f'groups:{group}'
 
-    else:
-        # If neither an organization nor a group is specified, get the list of all datasets
-        response = requests.get(url, headers=headers)
-        return response.json()
+        response = requests.get(f'{ckan_url}/api/3/action/package_search', headers=headers, params=params)
+        response_json = response.json()
+
+        if 'result' not in response_json or 'results' not in response_json['result']:
+            break
+
+        datasets = response_json['result']['results']
+        if not datasets:
+            break
+
+        for dataset in datasets:
+            output.append(get_dataset_info(dataset['id'])['result'])
+
+        offset += limit
+
+    return output
+
 
 
 def delete_dataset(dataset_id):
@@ -248,7 +255,7 @@ def delete_all_datasets_in_organization(organization):
     """
     datasets = list_datasets(organization=organization)  # List all datasets in the organization
     for dataset in datasets:
-        dataset_id = dataset['result']['id']  # Get the dataset ID
+        dataset_id = dataset['id']  # Get the dataset ID
         delete_response = delete_dataset(dataset_id)  # Delete the dataset
         print(f'Deleted dataset with ID: {dataset_id}. Response: {delete_response}')  # Print confirmation message
 
@@ -268,41 +275,56 @@ def pretty_print(json_data):
 
 
 if __name__ == '__main__':
-    # pass
-    # List all datasets
-    # datasets = list_datasets()
-    # print(datasets)
 
+    pass
+
+    # # Test with organization
+    # organization_datasets = list_datasets(organization="tanmay-s-playground")
+    # print(f"Total datasets in organization: {len(organization_datasets)}")
+    # print(organization_datasets)
+    # print("\n")
+    #
+    # # Test with group
+    # group_datasets = list_datasets(group="cyverse-curated")
+    # print(f"Total datasets in group: {len(group_datasets)}")
+    # print(group_datasets)
+    # print("\n")
+    #
+    #
+    # # Test without organization or group
+    # all_datasets = list_datasets()
+    # print(f"Total datasets: {len(all_datasets)}")
+    # print(all_datasets)
 
 
     # # Create a new dataset
-    extras = [{'key': 'Citation', 'value': 'John Doe (2024). My Dataset. CyVerse Data Commons. DOI 10.12345/abcde'}, {'key': 'DOI', 'value': '10.12345/abcde'}, {'key': 'Publication Year', 'value': '2024'}, {'key': 'Publisher', 'value': 'CyVerse Data Commons'}, {'key': 'resourceType', 'value': 'Example Dataset'}]
-    data = {
-        'name': 'test_cyverse_dataset',
-        'title': 'My Dataset4',
-        'notes': 'This is a test dataset',
-        # 'owner_org': 'tanmay-s-playground',
-        'owner_org': 'cyverse',
-        'private': False,
-        'groups': [
-            {
-                "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. These data are stable and contents will not change.",
-                "display_name": "CyVerse Curated",
-                "id": "881288fa-e1bf-4ee8-8894-d97976043e4f",
-                "image_display_url": "",
-                "name": "cyverse-curated",
-                "title": "CyVerse Curated"
-            }
-        ],
-        'author': ['John Doe', 'Jane DOe'],
-        # "license_id": "notspecified",
-        # "license_title": "License not specified",
-        # 'author_email': 'john.doe@example.com',
-        'tags': [{'name': 'example'}, {'name': 'dataset'}],
-        'extras': extras
-    }
-    dataset_response = create_dataset(data)
-    print(f'Dataset creation response: {dataset_response}')
+    # extras = [{'key': 'Citation', 'value': 'John Doe (2024). My Dataset. CyVerse Data Commons. DOI 10.12345/abcde'}, {'key': 'DOI', 'value': '10.12345/abcde'}, {'key': 'Publication Year', 'value': '2024'}, {'key': 'Publisher', 'value': 'CyVerse Data Commons'}, {'key': 'resourceType', 'value': 'Example Dataset'}]
+    # data = {
+    #     'name': 'test_cyverse_dataset',
+    #     'title': 'My Dataset4',
+    #     'notes': 'This is a test dataset',
+    #     # 'owner_org': 'tanmay-s-playground',
+    #     'owner_org': 'cyverse',
+    #     'private': False,
+    #     'groups': [
+    #         {
+    #             "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. These data are stable and contents will not change.",
+    #             "display_name": "CyVerse Curated",
+    #             "id": "881288fa-e1bf-4ee8-8894-d97976043e4f",
+    #             "image_display_url": "",
+    #             "name": "cyverse-curated",
+    #             "title": "CyVerse Curated"
+    #         }
+    #     ],
+    #     'author': ['John Doe', 'Jane DOe'],
+    #     # "license_id": "notspecified",
+    #     # "license_title": "License not specified",
+    #     # 'author_email': 'john.doe@example.com',
+    #     'tags': [{'name': 'example'}, {'name': 'dataset'}],
+    #     'extras': extras
+    # }
+    # dataset_response = create_dataset(data)
+    # print(f'Dataset creation response: {dataset_response}')
 
 
     #
