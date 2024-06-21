@@ -400,6 +400,9 @@ if __name__ == '__main__':
     # if delete == 'y':
     #     ckan.delete_all_datasets_in_organization('tanmay-s-playground')
 
+    # Create a .txt script that will be used to log the output of the script
+    file = open("migration_log.txt", "w")
+
 
     de_datasets: list[dict] = de.get_datasets()
 
@@ -424,7 +427,8 @@ if __name__ == '__main__':
         #     continue
         #     new_ckan_title = "Burning Vehicle Test 02 - "
         if count == 205:
-            print("Skipping #205: No metadata dataset")
+            print("Skipping #205: No metadata dataset\n")
+            file.write(f"Skipping #205: No metadata dataset\n")
             count += 1
             continue
         if 0 < count < 300:
@@ -445,6 +449,7 @@ if __name__ == '__main__':
                 # print(f"CKAN Dataset Title: {ckan_dataset_title}")
                 if de_dataset_title == ckan_dataset_title:
                     print(f"{count} - Matched: {de_dataset_title}")
+                    file.write(f"{count} - Matched: {de_dataset_title}\n")
 
                     # Get the last modified date for the dataset in the discovery environment
                     last_modified_de = de_dataset_metadata['date_modified']
@@ -454,15 +459,21 @@ if __name__ == '__main__':
                         if extra['key'] == 'Date last modified in discovery environment':
                             last_modified_ckan = extra['value']
 
+                    print("Last Modified in DE: ", last_modified_de)
+                    print("Last Modified in CKAN: ", last_modified_ckan)
+                    file.write(f"Last Modified in DE: {last_modified_de}\n")
+                    file.write(f"Last Modified in CKAN: {last_modified_ckan}\n")
                     # If the dataset in the discovery environment has been modified update the dataset in CKAN
                     # by deleting the old dataset and creating a new one with the updated metadata and files
                     if last_modified_de != last_modified_ckan:
                         ckan_dataset_id = ckan_dataset['id']
                         print("Rewriting")
+                        file.write("Rewriting\n\n")
                         ckan.delete_dataset(ckan_dataset_id)
                         migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
                     else:
                         print("\tNo Changes Made. Skipping...")
+                        file.write("\tNo Changes Made. Skipping...\n")
 
                     # Break out of the loop if the dataset is found in CKAN
                     break
@@ -472,13 +483,17 @@ if __name__ == '__main__':
             # If the dataset does not exist in CKAN, create a new dataset
             else:
                 print(f"{count} - Creating New Dataset in CKAN: {de_dataset_title}")
+                file.write(f"{count} - Creating New Dataset in CKAN: {de_dataset_title}\n")
                 migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
                 print("Creation Complete.")
+                file.write("Creation Complete.\n")
 
             print("\n")
+            file.write("\n\n")
         count += 1
 
 
+    file.close()
 
 
 
