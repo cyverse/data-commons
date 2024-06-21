@@ -1,6 +1,14 @@
+<<<<<<< Updated upstream
 from CKAN_Testing import main as ckan
 from DE_API_Testing import main3 as de
+=======
+# from CKAN_Testing import main as ckan
+# from DE_API_Testing import main3 as de
+import ckan
+import de
+>>>>>>> Stashed changes
 import json
+
 
 def clean_dataset_metadata(dataset_metadata: dict):
     """
@@ -18,6 +26,7 @@ def clean_dataset_metadata(dataset_metadata: dict):
             dataset_metadata[key] = [v.replace('\t', '') for v in value]
     return dataset_metadata
 
+
 def create_citation(dataset_metadata: dict):
     """
     Create a citation for the dataset using the dataset metadata.
@@ -28,8 +37,6 @@ def create_citation(dataset_metadata: dict):
         str: The citation for the dataset.
     """
 
-    # Check if the dataset is a datacite dataset
-    is_datacite = 'datacite.creator' in dataset_metadata
     citation = ''
 
     # Add the author, publication year, title, and CyVerse Data Commons to the citation
@@ -48,11 +55,14 @@ def create_citation(dataset_metadata: dict):
         if isinstance(dataset_metadata['Identifier'], str):
             # If the identifier is a string, add it to the citation
             citation += f"DOI {dataset_metadata['Identifier']}"
-        # If the identifier is a list, check if the second element is an empty string. If it is, add only the first element to the citation. Otherwise, add both elements to the citation.
+
+        # If the identifier is a list, check if the second element is an empty string.
+        # If it is, add only the first element to the citation. Otherwise, add both elements to the citation.
         elif dataset_metadata['Identifier'][1] == '':
             citation += f"DOI {dataset_metadata['Identifier'][0]}"
         else:
             citation += f"DOI {dataset_metadata['Identifier'][0]}, {dataset_metadata['Identifier'][1]}"
+
     # If the dataset does not have an 'Identifier' key, check the 'identifier' key instead
     except KeyError:
         if isinstance(dataset_metadata['identifier'], str):
@@ -63,7 +73,6 @@ def create_citation(dataset_metadata: dict):
             citation += f"DOI {dataset_metadata['identifier'][0]}, {dataset_metadata['identifier'][1]}"
 
     return citation
-
 
 
 def get_title(dataset_metadata: dict):
@@ -92,7 +101,6 @@ def get_title(dataset_metadata: dict):
         except KeyError:
             return dataset_metadata['Title']
 
-
 def get_author(dataset_metadata: dict):
     """
     Get the author(s) of the dataset from the dataset metadata.
@@ -103,9 +111,12 @@ def get_author(dataset_metadata: dict):
         str: The author(s) of the dataset.
     """
 
+<<<<<<< Updated upstream
     # Check if the dataset is a datacite dataset
     is_datacite = 'datacite.creator' in dataset_metadata
 
+=======
+>>>>>>> Stashed changes
     # Check if the dataset has a 'datacite.creator' key. If it does, use that as the author.
     if is_datacite:
         # If the author is a string, return the author. Otherwise, join the authors with a comma.
@@ -137,25 +148,47 @@ def get_publication_year(dataset_metadata: dict):
         str: The publication year of the dataset.
     """
 
+<<<<<<< Updated upstream
     # Check if the dataset is a datacite dataset
     is_datacite = 'datacite.creator' in dataset_metadata
 
+=======
+>>>>>>> Stashed changes
     # Check if the dataset has a 'datacite.publicationyear' key. If it does, use that as the publication year.
     if is_datacite:
         # If the publication year is a string, return the first four characters of the string.
         if isinstance(dataset_metadata['datacite.publicationyear'], str):
             return dataset_metadata['datacite.publicationyear'][:4]
-        # If the publication year is a list, return the first four characters of the first element in the list since the second element is empty
+        # If the publication year is a list, return the first four characters
+        # of the first element in the list since the second element is empty
         else:
             return dataset_metadata['datacite.publicationyear'][0][:4]
 
     # If the dataset does not have a 'datacite.publicationyear' key, use the 'publicationYear' key.
+<<<<<<< Updated upstream
     else:
         # If the publication year is a string, return the publication year.
         if isinstance(dataset_metadata['publicationYear'], str):
             return dataset_metadata['publicationYear']
         else:
             return dataset_metadata['publicationYear'][0][:4]
+=======
+    except KeyError:
+        try:
+            # If the publication year is a string, return the publication year.
+            if isinstance(dataset_metadata['publicationYear'], str):
+                return dataset_metadata['publicationYear']
+            else:
+                return dataset_metadata['publicationYear'][0][:4]
+
+        # If the dataset does not have a 'publicationYear' key, use the 'PublicationYear' key.
+        except KeyError:
+            # If the publication year is a string, return the publication year.
+            if isinstance(dataset_metadata['PublicationYear'], str):
+                return dataset_metadata['PublicationYear']
+            else:
+                return dataset_metadata['PublicationYear'][0][:4]
+>>>>>>> Stashed changes
 
 
 def get_extras(dataset_metadata: dict):
@@ -191,31 +224,20 @@ def get_extras(dataset_metadata: dict):
             else:
                 extras.append({'key': key, 'value': value})
 
-
     return extras
 
 
 def migrate_dataset_and_files(dataset_metadata: dict):
     dataset_metadata = clean_dataset_metadata(dataset_metadata)
     # pretty_print(dataset_metadata)
-    # print("\n\n\n")
-    #
-    # is_datacite = 'datacite.creator' in dataset_metadata
-    # print(f"Is DataCite: {is_datacite}")
-
 
     data = {
-        # 'name': get_title(dataset_metadata).lower().replace(' ', '-').replace('(', '').replace(')', ''),
-        # 'title': get_title(dataset_metadata),
-        # 'notes': dataset_metadata['description'],
-        'owner_org': 'tanmay-s-playground',
+        'owner_org': 'cyverse',
         'private': False,
-        # 'author': dataset_metadata['creator'],
-        # 'author_email': 'john.doe@example.com', # DONT FORGET TO ADD EMAIL FOR THAT ONE DATASET
-        # 'tags': [{'name': 'example'}, {'name': 'dataset'}],
         'groups': [
             {
-                "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. These data are stable and contents will not change.",
+                "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. "
+                               "These data are stable and contents will not change.",
                 "display_name": "CyVerse Curated",
                 "id": "881288fa-e1bf-4ee8-8894-d97976043e4f",
                 "image_display_url": "",
@@ -227,19 +249,34 @@ def migrate_dataset_and_files(dataset_metadata: dict):
     }
 
     # Get the title of the dataset
+<<<<<<< Updated upstream
     title = get_title(dataset_metadata).strip()
     ## Set the 'name' key to the title of the dataset with spaces replaced by hyphens and parentheses removed
     data['name'] = title.lower().replace(' ', '-').replace('(', '').replace(')', '').replace('.', '-').replace('"', '').replace('/', '-')
     ## Set the 'title' key to the title of the dataset
+=======
+    if title is None:
+        title = get_title(dataset_metadata).strip()
+    # Set the 'name' key to the title of the dataset with unallowed characters replaced
+    name = (title.lower().replace(' ', '-').replace('(', '').replace(')', '')
+            .replace('.', '-').replace('"', '').replace('/', '-')
+            .replace(',', '').replace(':', '').replace("*", "-")
+            .replace("'", "-").replace('&', '-'))
+    # If the length of the name is greater than 100, truncate it to 100 characters
+    if len(name) > 100:
+        name = name[:100]
+    data['name'] = name
+
+    # Set the 'title' key to the title of the dataset
+>>>>>>> Stashed changes
     data['title'] = title
 
-
-    # Set the 'notes' key to the description of the dataset depending on whether the description is stored in the 'description' key or 'Description' key
+    # Set the 'notes' key to the description of the dataset depending on
+    # whether the description is stored in the 'description' key or 'Description' key
     try:
         data['notes'] = dataset_metadata['description']
     except KeyError:
         data['notes'] = dataset_metadata['Description']
-
 
     # Set the 'author' key to the creator of the dataset
     data['author'] = get_author(dataset_metadata)
@@ -257,23 +294,31 @@ def migrate_dataset_and_files(dataset_metadata: dict):
         data['license_id'] = "notspecified"
         data['license_title'] = "License not specified"
 
-    # If there is a 'subject' key in the dataset metadata, add it to the tags depending on whether its a string or a list
+    # If there is a 'subject' key in the dataset metadata,
+    # add it to the tags depending on whether it's a string or a list
     if 'subject' in dataset_metadata:
         if isinstance(dataset_metadata['subject'], str):
             subjects = dataset_metadata['subject'].split(',')
             data['tags'] = [{'name': subject} for subject in subjects]
         else:
+<<<<<<< Updated upstream
             data['tags'] = [{'name': subject} for subject in dataset_metadata['subject']]
+=======
+            data['tags'] = [{'name': subject.replace("(", "").replace(")", "").replace("&", "-").replace("#", "-")} for
+                            subject in dataset_metadata['subject']]
+            # Go through each tag in the tags list and check if any of them are separated by a comma.
+            # If they are, split them into separate tags
+            for tag in data['tags']:
+                if ', ' in tag['name']:
+                    data['tags'].remove(tag)
+                    data['tags'] += [{'name': t.strip()} for t in tag['name'].split(',')]
+>>>>>>> Stashed changes
 
     # If there is a 'version' or 'Version' key in the dataset metadata, add it to the data dictionary
     if 'version' in dataset_metadata:
         data['version'] = dataset_metadata['version']
     elif 'Version' in dataset_metadata:
         data['version'] = dataset_metadata['Version']
-
-    # Print the data dictionary
-    # print("Data Dictionary: ")
-    # pretty_print(data)
 
     # Create the dataset
     dataset_response = ckan.create_dataset(data)
@@ -284,17 +329,27 @@ def migrate_dataset_and_files(dataset_metadata: dict):
     print(f'Dataset ID: {dataset_id}')
     print('\n')
 
-
     # --------------------------------- FILES ---------------------------------
 
 
     # Get the list of files in the dataset
     files = de.get_files(dataset_metadata['de_path'])
+<<<<<<< Updated upstream
     # print('\n\n\nFiles without metadata: ')
     # pretty_print(files)
+=======
+    # Get the total number of files in the dataset
+    num_files = files['total']
+    print(f"Number of Files: {num_files}")
+    if num_files > 20:
+        cont = input("Continue? (y/n): ")
+        if cont == 'n':
+            return
+    # Pass the number of files to the get_files function to get all the files
+    files = de.get_files(dataset_metadata['de_path'], limit=num_files)
+>>>>>>> Stashed changes
 
-    # print("\n\n\nFiles with Metadata: \n")
-    # print("Files")
+    # Iterate through each file in the dataset and create a resource for it in CKAN
     for file in files['files']:
         file_metadata = de.get_all_metadata_file(file)
         # pretty_print(file_metadata)
@@ -312,7 +367,7 @@ def migrate_dataset_and_files(dataset_metadata: dict):
         # print(f'Resource creation response: {response}')
         # print("\n\n")
 
-    # print("Folders")
+    # Iterate through each folder in the dataset and create a resource for it in CKAN
     for folder in files['folders']:
         folder_metadata = de.get_all_metadata_file(folder)
         # pretty_print(folder_metadata)
@@ -328,8 +383,7 @@ def migrate_dataset_and_files(dataset_metadata: dict):
         }
         response = ckan.add_resource_link(data)
         # print(f'Resource creation response: {response}')
-        #
-        # print("\n\n")
+
 
 def pretty_print(json_data):
     """
@@ -340,7 +394,9 @@ def pretty_print(json_data):
     """
     print(json.dumps(json_data, indent=4, sort_keys=True))
 
+
 if __name__ == '__main__':
+<<<<<<< Updated upstream
 
     # ckan.delete_all_datasets_in_organization('tanmay-s-playground')
 
@@ -348,21 +404,36 @@ if __name__ == '__main__':
     # pretty_print(de_datasets)
 
     # print("\n\n\n")
+=======
+    # Create a .txt script that will be used to log the output of the script
+    file = open("migration_log.txt", "w")
+
+    # Get the list of datasets in the discovery environment
+    de_datasets = de.get_datasets()
+
+    # Get the list of datasets in CKAN by group or organization
+>>>>>>> Stashed changes
     # ckan_datasets = ckan.list_datasets(group='cyverse-curated')
     ckan_datasets = ckan.list_datasets(organization='tanmay-s-playground')
-    # for dataset in ckan_datasets:
-    #     pretty_print(dataset)
-    # print("\n\n\n")
 
+    # Initialize a counter to keep track of the number of datasets processed
     count = 0
 
     # Iterate through each dataset in the discovery environment to see if they exist in CKAN and whether they need to be updated
     for de_dataset in de_datasets:
+<<<<<<< Updated upstream
         if 3 < count < 10:
+=======
+        new_ckan_title = None
+        if count == 205:
+            print("Skipping #205: No metadata dataset\n")
+            file.write("Skipping #205: No metadata dataset\n")
+            count += 1
+            continue
+        if 0 < count < 300:
+>>>>>>> Stashed changes
             # Get the metadata for the dataset in the discovery environment
             de_dataset_metadata = de.get_all_metadata_dataset(de_dataset)
-            ## print("Discovery Environment Dataset Metadata")
-            ## pretty_print(de_dataset_metadata)
 
             # Get the title of the dataset in the discovery environment
             de_dataset_title = get_title(de_dataset_metadata).strip()
@@ -396,8 +467,6 @@ if __name__ == '__main__':
                     # Break out of the loop if the dataset is found in CKAN
                     break
 
-
-
             # If the dataset does not exist in CKAN, create a new dataset
             else:
                 print(f"Creating New Dataset in CKAN: {de_dataset_title}")
@@ -406,14 +475,10 @@ if __name__ == '__main__':
             print("\n")
         count += 1
 
+<<<<<<< Updated upstream
 
-
-
-
-
-
-
+=======
+    file.close()
+>>>>>>> Stashed changes
 
     # migrate_dataset_and_files(de.get_all_metadata_dataset(de_datasets[18]))
-
-
