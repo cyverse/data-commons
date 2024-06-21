@@ -6,7 +6,7 @@ from datetime import datetime
 base_url = 'https://de.cyverse.org/terrain'
 
 # API Key (replace with your actual API key)
-api_key = 'Bearer ' + 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUMUdaWW9IRzJYVUc0NG5NRFpQc3d3V3QzZ0xWUElmcEl2Qm82VGxVQmUwIn0.eyJleHAiOjE3MTg5NDEzNDQsImlhdCI6MTcxODkxMjU0NCwianRpIjoiMDkzNDZkMmMtNzUzNi00NGEyLTlkMzgtMjI5M2JhOGZlMTQ4IiwiaXNzIjoiaHR0cHM6Ly9rYy5jeXZlcnNlLm9yZy9hdXRoL3JlYWxtcy9DeVZlcnNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Ijg5YjM5YTMxLTQzMmQtNDRiMi1iYzMzLTEyOTY4NTUxMzE4ZSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImRlLXByb2QiLCJzZXNzaW9uX3N0YXRlIjoiODVmYTVjZTktNTIzMC00NDcwLTg2ZTAtNGI3OWNmYTA2MWY4IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyJodHRwczovL2RlLmN5dmVyc2Uub3JnIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJkZS1wcmV2aWV3LWFjY2VzcyIsIm9mZmxpbmVfYWNjZXNzIiwiaXBsYW50LWV2ZXJ5b25lIiwidW1hX2F1dGhvcml6YXRpb24iLCJjb21tdW5pdHkiXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJUYW5tYXkgRGV3YW5nYW4iLCJlbnRpdGxlbWVudCI6WyJkZS1wcmV2aWV3LWFjY2VzcyIsImlwbGFudC1ldmVyeW9uZSIsImNvbW11bml0eSJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ0ZGV3YW5nYW4iLCJnaXZlbl9uYW1lIjoiVGFubWF5IiwiZmFtaWx5X25hbWUiOiJEZXdhbmdhbiIsImVtYWlsIjoidGRld2FuZ2FuQGFyaXpvbmEuZWR1In0.VuJQSOIeV8EkckCzVYgxMW_4GRcKs6PUtdtDoEh_HAQpccYC_DjFgp4PaAciNX6kUppXgOnUUbvcLkVGFpT-6GJhxvL4e8gKx9_SSSDUSv-x1PLQS4MnclEmJh5H3weBYROfgLsszunnWzvn7x52McPZNz_6DzU4iNREPPX3KQ0DXnkR0gTWnlEHaq3BFfHIyISwCGVWWdCKoddtE04SEjJijtpXwmtYO5QoIFNXy7Sk73-E2uNliIEL9CjdhD91hm4o_jTtYB74-CXEGkuYLk6aZHV2tU5TC9SnCj6sWhsiiC5J9Bjf_t6GXFQiX0M7iDXViPo6wEzI2-COg0uwfg'
+api_key = 'Bearer ' + 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUMUdaWW9IRzJYVUc0NG5NRFpQc3d3V3QzZ0xWUElmcEl2Qm82VGxVQmUwIn0.eyJleHAiOjE3MTkwMjY0MDUsImlhdCI6MTcxODk5NzYwNSwianRpIjoiYjdjN2ZlMWEtNzUwZC00M2YwLTgwNWUtOGY3ZjVkMTE3MzljIiwiaXNzIjoiaHR0cHM6Ly9rYy5jeXZlcnNlLm9yZy9hdXRoL3JlYWxtcy9DeVZlcnNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Ijg5YjM5YTMxLTQzMmQtNDRiMi1iYzMzLTEyOTY4NTUxMzE4ZSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImRlLXByb2QiLCJzZXNzaW9uX3N0YXRlIjoiYzAyOTlmMmUtOGJmZi00ZDRjLTliMGMtZjYxNzhkYjhiM2I2IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyJodHRwczovL2RlLmN5dmVyc2Uub3JnIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJkZS1wcmV2aWV3LWFjY2VzcyIsIm9mZmxpbmVfYWNjZXNzIiwiaXBsYW50LWV2ZXJ5b25lIiwidW1hX2F1dGhvcml6YXRpb24iLCJjb21tdW5pdHkiXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJUYW5tYXkgRGV3YW5nYW4iLCJlbnRpdGxlbWVudCI6WyJkZS1wcmV2aWV3LWFjY2VzcyIsImlwbGFudC1ldmVyeW9uZSIsImNvbW11bml0eSJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ0ZGV3YW5nYW4iLCJnaXZlbl9uYW1lIjoiVGFubWF5IiwiZmFtaWx5X25hbWUiOiJEZXdhbmdhbiIsImVtYWlsIjoidGRld2FuZ2FuQGFyaXpvbmEuZWR1In0.jJXeDwa5Sf2aNV5qPgxc5uwBupst2ei5mo8NMNmVMagXCNUQkBqz0gosRNHgugwtR06VekY4u6iLRNtCPyZLKj-Szu4U38-30OPyuj8MdLFGBk4HUZLUx66KKRWdQcmcj7VUA3ab6hlxOj0BHjEBt5m_0ke7iM3Tv41uf8JgdoJHmUb-e4m_iJJ6LsMxIT-mGYaVARxmKRwmBBHH1VDijTEBafxXdMxPT4pSlw-gCM-FV5miRCkGOMEU3vfWSw2OypVakeOPUiD_vH9L6CZ4OglNBS6fOzj_87ZkAUTIm2QGwJ3rtbgvjNjwPtnFnma8kr2SeEMV9wwuuq--3Q2Esw'
 
 # Headers for the requests
 headers = {
@@ -182,7 +182,7 @@ def get_files(path, limit=10):
         return None
 
 
-def get_datasets():
+def get_datasets(path='/iplant/home/shared/commons_repo/curated/'):
     """
     Get a list of all datasets with some of their metadata. The rest of the metadata can be retrieved using the get_metadata function.
 
@@ -191,12 +191,11 @@ def get_datasets():
     to CKAN.
 
     Args:
-        None
+        path (str): The path to the directory containing the datasets.
 
     Returns:
         list: A list of dictionaries, each representing a dataset with its metadata.
     """
-    path = '/iplant/home/shared/commons_repo/curated/'  # Define the path to the datasets
     url = f'{base_url}/secured/filesystem/directory'  # Construct the API URL for the directory endpoint
     params = {'path': path}  # Set the request parameters
     response = requests.get(url, headers=headers, params=params)  # Send a GET request to the API
@@ -211,16 +210,17 @@ def get_datasets():
 
 # For testing purposes
 if __name__ == '__main__':
-    file_directory_path = '/iplant/home/shared/commons_repo/curated/Carolyn_Lawrence_Dill_GOMAP_Banana_NCBI_ASM31385v2_February_2021.r1/0_GOMAP-input'
+    # file_directory_path = '/iplant/home/shared/commons_repo/curated/Carolyn_Lawrence_Dill_GOMAP_Banana_NCBI_ASM31385v2_February_2021.r1/0_GOMAP-input'
 
     # get_files(file_directory_path)
-    datasets = get_datasets()
-    # print(datasets)
+    datasets = get_datasets('/iplant/home/shared/commons_repo/curated/Carolyn_Lawrence_Dill_GOMAP_Barrel_Clover_LIS_R108.gnmHiC_1.ann1.Y8NH_November_2022_v1.r1')
+    pretty_print(datasets)
+    print(len(datasets))
 
     # for dataset in datasets:
     #     dataset_metadata = get_all_metadata_dataset(dataset)
     #     pretty_print(dataset_metadata)
 
-    pretty_print(get_all_metadata_dataset((datasets[18])))
-
-    get_all_metadata_file(get_files(get_all_metadata_dataset((datasets[18]))['de_path'])['folders'][0])
+    # pretty_print(get_all_metadata_dataset((datasets[18])))
+    #
+    # get_all_metadata_file(get_files(get_all_metadata_dataset((datasets[18]))['de_path'])['folders'][0])
