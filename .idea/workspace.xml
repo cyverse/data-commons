@@ -5,11 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4f29cfd8-7e90-4db4-b58a-373c96e0ad25" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/migration/migrate_single_dataset.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/migration/num_files.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/migration/de.py" beforeDir="false" afterPath="$PROJECT_DIR$/migration/de.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/migration/migrate_single_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/migration/migrate_single_dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/migration/migration.py" beforeDir="false" afterPath="$PROJECT_DIR$/migration/migration.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/migration/migration_notes" beforeDir="false" afterPath="$PROJECT_DIR$/migration/migration_notes" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +69,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1718912379476</updated>
-      <workItem from="1718912380562" duration="20874000" />
+      <workItem from="1718912380562" duration="21647000" />
     </task>
     <servers />
   </component>

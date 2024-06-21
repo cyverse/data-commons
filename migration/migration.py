@@ -220,8 +220,12 @@ def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='
     data = {
         'owner_org': organization,
         'private': False,
-        'groups': [
-            {
+        'extras': get_extras(dataset_metadata, curated=curated)
+    }
+
+    # Only add the 'groups' key if the dataset is curated
+    if curated:
+        data['groups'] = {
                 "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. "
                                "These data are stable and contents will not change.",
                 "display_name": "CyVerse Curated",
@@ -230,9 +234,6 @@ def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='
                 "name": "cyverse-curated",
                 "title": "CyVerse Curated"
             }
-        ],
-        'extras': get_extras(dataset_metadata, curated=curated)
-    }
 
     # Get the title of the dataset
     if title is None:
