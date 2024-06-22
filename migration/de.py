@@ -1,18 +1,42 @@
 import requests
 import json
 from datetime import datetime
+from requests.auth import HTTPBasicAuth
+
+def get_de_api_key(username, password):
+    """
+    Obtain an API key from the Discovery Environment (DE) using the username and password.
+
+    This function sends a GET request to the DE token endpoint with HTTP basic authentication
+    to retrieve an access token. The token can then be used to authorize calls to other DE API endpoints.
+
+    Args:
+        username (str): The CyVerse username.
+        password (str): The CyVerse password.
+
+    Returns:
+        str: The access token for DE API.
+    """
+    url = 'https://de.cyverse.org/terrain/token/keycloak'
+    response = requests.get(url, auth=HTTPBasicAuth(username, password))
+
+    if response.status_code == 200:
+        token_data = response.json()
+        return token_data['access_token']
+    else:
+        print(f"Error obtaining API key: {response.status_code} - {response.text}")
+        return None
 
 # Base URL for the Discovery Environment API
 base_url = 'https://de.cyverse.org/terrain'
 
-# API Key (replace with your actual API key)
-api_key = 'Bearer ' + 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUMUdaWW9IRzJYVUc0NG5NRFpQc3d3V3QzZ0xWUElmcEl2Qm82VGxVQmUwIn0.eyJleHAiOjE3MTkwMjY0MDUsImlhdCI6MTcxODk5NzYwNSwianRpIjoiYjdjN2ZlMWEtNzUwZC00M2YwLTgwNWUtOGY3ZjVkMTE3MzljIiwiaXNzIjoiaHR0cHM6Ly9rYy5jeXZlcnNlLm9yZy9hdXRoL3JlYWxtcy9DeVZlcnNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Ijg5YjM5YTMxLTQzMmQtNDRiMi1iYzMzLTEyOTY4NTUxMzE4ZSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImRlLXByb2QiLCJzZXNzaW9uX3N0YXRlIjoiYzAyOTlmMmUtOGJmZi00ZDRjLTliMGMtZjYxNzhkYjhiM2I2IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyJodHRwczovL2RlLmN5dmVyc2Uub3JnIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJkZS1wcmV2aWV3LWFjY2VzcyIsIm9mZmxpbmVfYWNjZXNzIiwiaXBsYW50LWV2ZXJ5b25lIiwidW1hX2F1dGhvcml6YXRpb24iLCJjb21tdW5pdHkiXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJUYW5tYXkgRGV3YW5nYW4iLCJlbnRpdGxlbWVudCI6WyJkZS1wcmV2aWV3LWFjY2VzcyIsImlwbGFudC1ldmVyeW9uZSIsImNvbW11bml0eSJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ0ZGV3YW5nYW4iLCJnaXZlbl9uYW1lIjoiVGFubWF5IiwiZmFtaWx5X25hbWUiOiJEZXdhbmdhbiIsImVtYWlsIjoidGRld2FuZ2FuQGFyaXpvbmEuZWR1In0.jJXeDwa5Sf2aNV5qPgxc5uwBupst2ei5mo8NMNmVMagXCNUQkBqz0gosRNHgugwtR06VekY4u6iLRNtCPyZLKj-Szu4U38-30OPyuj8MdLFGBk4HUZLUx66KKRWdQcmcj7VUA3ab6hlxOj0BHjEBt5m_0ke7iM3Tv41uf8JgdoJHmUb-e4m_iJJ6LsMxIT-mGYaVARxmKRwmBBHH1VDijTEBafxXdMxPT4pSlw-gCM-FV5miRCkGOMEU3vfWSw2OypVakeOPUiD_vH9L6CZ4OglNBS6fOzj_87ZkAUTIm2QGwJ3rtbgvjNjwPtnFnma8kr2SeEMV9wwuuq--3Q2Esw'
+# Get the API using default login credentials
+api_key = 'Bearer ' + get_de_api_key('tanmaytest', 'password123')
 
 # Headers for the requests
 headers = {
     'Authorization': api_key
 }
-
 
 def pretty_print(json_data):
     """

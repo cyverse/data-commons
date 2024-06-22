@@ -1,5 +1,3 @@
-# from CKAN_Testing import main as ckan
-# from DE_API_Testing import main3 as de
 import ckan
 import de
 import json
@@ -225,7 +223,7 @@ def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='
 
     # Only add the 'groups' key if the dataset is curated
     if curated:
-        data['groups'] = {
+        data['groups'] = [{
                 "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. "
                                "These data are stable and contents will not change.",
                 "display_name": "CyVerse Curated",
@@ -233,7 +231,7 @@ def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='
                 "image_display_url": "",
                 "name": "cyverse-curated",
                 "title": "CyVerse Curated"
-            }
+            }]
 
     # Get the title of the dataset
     if title is None:
@@ -393,7 +391,7 @@ if __name__ == '__main__':
 
     # Get the list of datasets in CKAN by group or organization
     # ckan_datasets = ckan.list_datasets(group='cyverse-curated')
-    ckan_datasets = ckan.list_datasets(organization='tanmay-s-playground')
+    ckan_datasets = ckan.list_datasets(organization='cyverse')
 
     # Initialize a counter to keep track of the number of datasets processed
     count = 0
@@ -407,7 +405,7 @@ if __name__ == '__main__':
             file.write("Skipping #205: No metadata dataset\n")
             count += 1
             continue
-        if 0 < count < 300:
+        else:
             # Get the metadata for the dataset in the discovery environment
             de_dataset_metadata = de.get_all_metadata_dataset(de_dataset)
 
@@ -432,6 +430,11 @@ if __name__ == '__main__':
                     for extra in ckan_dataset['extras']:
                         if extra['key'] == 'Date last modified in discovery environment':
                             last_modified_ckan = extra['value']
+
+                    print(f"Last Modified DE: {last_modified_de}")
+                    file.write(f"Last Modified DE: {last_modified_de}\n")
+                    print(f"Last Modified CKAN: {last_modified_ckan}")
+                    file.write(f"Last Modified CKAN: {last_modified_ckan}\n")
 
                     # If the dataset in the discovery environment has been modified update the dataset in CKAN
                     # by deleting the old dataset and creating a new one with the updated metadata and files
