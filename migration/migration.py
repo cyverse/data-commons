@@ -439,11 +439,16 @@ if __name__ == '__main__':
                     # If the dataset in the discovery environment has been modified update the dataset in CKAN
                     # by deleting the old dataset and creating a new one with the updated metadata and files
                     if last_modified_de != last_modified_ckan:
-                        ckan_dataset_id = ckan_dataset['id']
-                        print("Rewriting")
-                        file.write("Rewriting\n\n")
-                        ckan.delete_dataset(ckan_dataset_id)
-                        migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
+                        # Check if the last_modified date in CKAN is exactly 7 hours ahead
+                        # of the last_modified date in DE because of timezone difference.
+                        # If it is not, then rewrite the dataset in CKAN
+                        if not (int(last_modified_ckan[11:13]) == int(last_modified_de[11:13]) + 7
+                                and last_modified_ckan[14:] == last_modified_de[14:]):
+                            ckan_dataset_id = ckan_dataset['id']
+                            print("Rewriting")
+                            file.write("Rewriting\n\n")
+                            ckan.delete_dataset(ckan_dataset_id)
+                            migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
                     else:
                         print("\tNo Changes Made. Skipping...")
                         file.write("\tNo Changes Made. Skipping...\n")

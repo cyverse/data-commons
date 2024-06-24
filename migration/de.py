@@ -1,6 +1,6 @@
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from requests.auth import HTTPBasicAuth
 
 def get_de_api_key(username, password):
@@ -67,6 +67,7 @@ def convert_to_date(milliseconds):
     seconds = milliseconds / 1000  # Convert milliseconds to seconds
     date_obj = datetime.fromtimestamp(seconds)  # Create a datetime object from the timestamp
     date_str = date_obj.strftime('%Y-%m-%d %H:%M:%S')  # Format the datetime object as a string
+
     return date_str
 
 
