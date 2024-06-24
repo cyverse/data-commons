@@ -382,42 +382,58 @@ def pretty_print(json_data):
     print(json.dumps(json_data, indent=4, sort_keys=True))
 
 
-# Function to check whether all the files/resources transferred from DE to CKAN
-# If not, then transfer the remaining files
-def check_files_transferred(de_files, ckan_resources):
+def check_files_transferred(de_dataset, ckan_dataset):
     """
-    Check if all files from DE have been transferred to CKAN.
-
+    Check if all the files/resources have been transferred from DE to CKAN.
+    If not, then transfer the remaining files.
     Args:
-        de_files (list): List of files in DE.
-        ckan_resources (list): List of resources in CKAN.
+        de_dataset: Dictionary of the dataset in the discovery environment
+        ckan_dataset: Dictionary of the dataset in CKAN
 
     Returns:
-        list: List of files that have not been transferred to CKAN.
+        bool: True if all files have been transferred, False otherwise
     """
-    # Get the names of the files in DE
-    de_file_names = [file['file_name'] for file in de_files]
+    print("Checking if all files transferred...")
 
-    # Get the names of the resources in CKAN
-    ckan_resource_names = [resource['name'] for resource in ckan_resources]
+    ckan_files = ckan_dataset['resources']
+    ckan_num_files = len(ckan_files)
 
-    # Find the files that have not been transferred
-    files_not_transferred = [file for file in de_file_names if file not in ckan_resource_names]
+    # Get the list of files in the dataset
+    de_files = de.get_files(de_dataset['path'], limit=1)
+    # Get the total number of files in the dataset
+    de_num_files = de_files['total']
+    print("Number of Files in DE:", de_num_files)
 
-    # transfer the remaining files
-    for file in files_not_transferred:
-        file_metadata = de.get_all_metadata_file(file)
-        data = {
-            'package_id': dataset_id,
-            'name': file_metadata['file_name'],
-            'description': None,
-            'url': file_metadata['web_dav_location'],
-            'format': file_metadata['file_type'],
-            'Date created in discovery environment': file_metadata['date_created'],
-            'Date last modified in discovery environment': file_metadata['date_modified']
-        }
-        response = ckan.add_resource_link(data)
-        print(f'Resource creation response: {response}')
+    if de_num_files == ckan_num_files:
+        print("All files have been transferred. No action needed.")
+        return True
+
+    # Pass the number of files to the get_files function to get all the files
+    de_files = de.get_files(de_dataset['path'], limit=de_num_files)
+
+    print("Transferring remaining files...")
+    # Check which of the files are not in CKAN and transfer them
+    for num, de_file in enumerate(de_files['files']):
+        de_file_title = de_file['label']
+        for ckan_file in ckan_files:
+            ckan_file_title = ckan_file['name']
+            if de_file_title == ckan_file_title:
+                break
+        else:
+            print(f"\t{num} - Transferring file:", de_file_title)
+            file_metadata = de.get_all_metadata_file(de_file)
+            data = {
+                'package_id': ckan_dataset['id'],
+                'name': file_metadata['file_name'],
+                'description': None,
+                'url': file_metadata['web_dav_location'],
+                'format': file_metadata['file_type'],
+                'Date created in discovery environment': file_metadata['date_created'],
+                'Date last modified in discovery environment': file_metadata['date_modified']
+            }
+            response = ckan.add_resource_link(data)
+
+    return False
 
 
 if __name__ == '__main__':
@@ -460,6 +476,10 @@ if __name__ == '__main__':
                 if de_dataset_title == ckan_dataset_title:
                     print(f"{count} - Matched: {de_dataset_title}")
                     file.write(f"{count} - Matched: {de_dataset_title}\n")
+
+                    # Check if all the files/resources have been transferred from DE to CKAN
+                    # If not, then transfer the remaining files
+                    check_files_transferred(de_dataset, ckan_dataset)
 
                     # Get the last modified date for the dataset in the discovery environment
                     last_modified_de = de_dataset_metadata['date_modified']
