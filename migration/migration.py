@@ -240,7 +240,7 @@ def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='
     name = (title.lower().replace(' ', '-').replace('(', '').replace(')', '')
             .replace('.', '-').replace('"', '').replace('/', '-')
             .replace(',', '').replace(':', '').replace("*", "-")
-            .replace("'", "-").replace('&', '-'))
+            .replace("'", "-").replace('&', '-').replace("’", "-"))
     # If the length of the name is greater than 100, truncate it to 100 characters
     if len(name) > 100:
         name = name[:100]
@@ -380,6 +380,44 @@ def pretty_print(json_data):
     json_data (dict): JSON data to be pretty-printed.
     """
     print(json.dumps(json_data, indent=4, sort_keys=True))
+
+
+# Function to check whether all the files/resources transferred from DE to CKAN
+# If not, then transfer the remaining files
+def check_files_transferred(de_files, ckan_resources):
+    """
+    Check if all files from DE have been transferred to CKAN.
+
+    Args:
+        de_files (list): List of files in DE.
+        ckan_resources (list): List of resources in CKAN.
+
+    Returns:
+        list: List of files that have not been transferred to CKAN.
+    """
+    # Get the names of the files in DE
+    de_file_names = [file['file_name'] for file in de_files]
+
+    # Get the names of the resources in CKAN
+    ckan_resource_names = [resource['name'] for resource in ckan_resources]
+
+    # Find the files that have not been transferred
+    files_not_transferred = [file for file in de_file_names if file not in ckan_resource_names]
+
+    # transfer the remaining files
+    for file in files_not_transferred:
+        file_metadata = de.get_all_metadata_file(file)
+        data = {
+            'package_id': dataset_id,
+            'name': file_metadata['file_name'],
+            'description': None,
+            'url': file_metadata['web_dav_location'],
+            'format': file_metadata['file_type'],
+            'Date created in discovery environment': file_metadata['date_created'],
+            'Date last modified in discovery environment': file_metadata['date_modified']
+        }
+        response = ckan.add_resource_link(data)
+        print(f'Resource creation response: {response}')
 
 
 if __name__ == '__main__':
