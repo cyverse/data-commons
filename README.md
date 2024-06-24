@@ -7,17 +7,17 @@ Eventually the final results have to be made public, sharing these multiple data
 
 ## Python Scripts
 
-### de.py
+### migration/de.py
 
-This script is used to interact with the Data Commons API. 
+This is a helper script used to interact with the Data Commons API. 
 It is used to get datasets, files, and metadata from the Discovery Environment.
 
-### ckan.py 
+### migration/ckan.py 
 
-This script is used to interact with the CKAN API. 
+This is a helper script  used to interact with the CKAN API. 
 It is used to create datasets, resources, and organizations in CKAN.
 
-### migration.py
+### migration/migration.py
 
 This is the primary script that is used to migrate datasets from the Discovery Environment to CKAN.
 It iterates through each dataset in the curated directory in the discovery environment and creates a dataset in CKAN with the same metadata if it does not already exist.
@@ -25,7 +25,7 @@ If it does exist, it also checks if the files in the dataset have been updated a
 This script doesn't take in any arguments and is run as is.
 This script is also being run as a cron job every 24 hours to keep the datasets in CKAN up to date.
 
-### migrate_single_dataset.py
+### migration/migrate_single_dataset.py
 
 This script is used to migrate a single dataset from the Discovery Environment to CKAN using the functions defined in migration.py.
 It takes in 4 command line arguments:
@@ -42,4 +42,7 @@ It is also a form of authentication to ensure that only authorized users can mig
 python migrate_single_dataset.py /iplant/home/shared/test cyverse test_user test_password
 ```
 
+### gradio/gradio_main.py
+
+This is currently a testing script to test creating an interface using gradio.
 
