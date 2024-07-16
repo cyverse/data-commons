@@ -1,20 +1,21 @@
 import requests
 import json
 
+
 # CKAN instance URL
 ckan_url = 'https://ckan.cyverse.rocks/'
 
-# API Key (you need to generate this in your CKAN instance)
+# API Key
 api_key = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJid0tfcVU5YUdlQkxScTNuWDRZbkdfRzctRk90bUdzeDh0ZzVwM19GUWJRIiwiaWF0IjoxNzE4MDg0NDcwfQ.f1Zp-LlzrhkqBvBh-bjm7hE0oOJiXKzRutFFjg6ykfo'
 
-url = f'{ckan_url}/api/3/action/organization_list'
-headers = {'Authorization': api_key}
+def get_organizations():
+    url = 'https://ckan.cyverse.rocks/api/3/action/organization_list'
+    headers = {'Authorization': api_key}
 
-response = requests.get(url, headers=headers)
-organizations = response.json()
+    response = requests.get(url, headers=headers)
+    organizations = response.json()
 
-print(organizations)
-
+    return organizations
 
 def create_dataset(data):
     """
@@ -105,6 +106,33 @@ def add_resource_link(data):
     #     'Date Last Modified in Discovery Environment': date_modified_de
     # }
     response = requests.post(resource_url, headers=headers, json=data)  # Send POST request to add resource link
+    return response.json()  # Return the JSON response from the API
+
+
+def update_dataset_metadata(dataset_id, new_metadata):
+    """
+    Update the metadata of a dataset in CKAN.
+
+    This function sends a POST request to the CKAN API to update the metadata of a specified dataset.
+    The new metadata should include information such as name, title, description, owner organization,
+    and any additional metadata fields.
+
+    Args:
+        dataset_id (str): The ID of the dataset to update.
+        new_metadata (dict): The new metadata dictionary, including keys like 'name', 'title', 'description',
+                             'owner_org', and any additional metadata.
+
+    Returns:
+        dict: The response from the CKAN API, typically containing the updated dataset metadata.
+    """
+    url = f'{ckan_url}/api/3/action/package_update'  # API endpoint for updating a dataset
+    headers = {
+        'Authorization': api_key,  # API key for authorization
+        'Content-Type': 'application/json'  # Content type for the request
+    }
+    data = new_metadata
+    data['id'] = dataset_id  # Add the dataset ID to the data
+    response = requests.post(url, headers=headers, data=json.dumps(data))  # Send POST request to update dataset
     return response.json()  # Return the JSON response from the API
 
 
@@ -272,6 +300,9 @@ def pretty_print(json_data):
     print(json.dumps(json_data, indent=4, sort_keys=True))
 
 
+
+
+
 # For testing purposes...
 if __name__ == '__main__':
 
@@ -283,11 +314,12 @@ if __name__ == '__main__':
     # print(organization_datasets)
     # print("\n")
     #
-    # # Test with group
+    # Test with group
     # group_datasets = list_datasets(group="cyverse-curated")
     # print(f"Total datasets in group: {len(group_datasets)}")
-    # print(group_datasets)
-    # print("\n")
+    # for dataset in group_datasets:
+    #     pretty_print(dataset)
+    #     print("\n\n\n")
     #
     #
     # # Test without organization or group
@@ -299,11 +331,11 @@ if __name__ == '__main__':
     # # Create a new dataset
     # extras = [{'key': 'Citation', 'value': 'John Doe (2024). My Dataset. CyVerse Data Commons. DOI 10.12345/abcde'}, {'key': 'DOI', 'value': '10.12345/abcde'}, {'key': 'Publication Year', 'value': '2024'}, {'key': 'Publisher', 'value': 'CyVerse Data Commons'}, {'key': 'resourceType', 'value': 'Example Dataset'}]
     # data = {
-    #     'name': 'test_cyverse_dataset',
-    #     'title': 'My Dataset4',
+    #     'name': 'test_dataset',
+    #     'title': 'My Dataset',
     #     'notes': 'This is a test dataset',
-    #     # 'owner_org': 'tanmay-s-playground',
-    #     'owner_org': 'cyverse',
+    #     'owner_org': 'tanmay-s-playground',
+    #     # 'owner_org': 'cyverse',
     #     'private': False,
     #     'groups': [
     #         {
@@ -323,10 +355,52 @@ if __name__ == '__main__':
     #     'extras': extras
     # }
     # dataset_response = create_dataset(data)
-    # print(f'Dataset creation response: {dataset_response}')
+    # pretty_print(dataset_response)
+    # data = {
+    #     'package_id': dataset_response['result']['id'],
+    #     'name': 'ex resource',
+    #     'description': 'example reswouce for testing',
+    #     'url': 'https://data.cyverse.org/dav-anon/iplant/home/tedgin/public/bms/data-store-fix',
+    #     'format': '',  # or any other format that your link represents
+    #     'Date Created in Discovery Environment': 'Aug 2, 2016 2:36:59 AM',
+    #     'Date Last Modified in Discovery Environment': 'Aug 2, 2016 11:52:15 AM'
+    # }
+    # add_resource_link(data)
 
 
-    #
+
+    # Update the metadata of an existing dataset
+    id = "c34d56be-61b8-4d6b-8814-495e8555691e"
+    extras = [{'key': 'Citation', 'value': 'updated_metadata'}, {'key': 'DOI', 'value': 'updated metadatae'}, {'key': 'Publication Year', 'value': '5646'}, {'key': 'Publisher', 'value': 'CyVerse Data Commons updated metadata'}, {'key': 'resourceType', 'value': 'Example Dataset with updated metadata'}]
+    data = {
+        'name': 'test_dataset_updated_metadata',
+        'title': 'My Dataset with updated metadatra',
+        'notes': 'This is a test dataset WITH UPDATED METADATA',
+        'owner_org': 'tanmay-s-playground',
+        # 'owner_org': 'cyverse',
+        'private': False,
+        # 'groups': [
+        #     {
+        #         "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. These data are stable and contents will not change.",
+        #         "display_name": "CyVerse Curated",
+        #         "id": "881288fa-e1bf-4ee8-8894-d97976043e4f",
+        #         "image_display_url": "",
+        #         "name": "cyverse-curated",
+        #         "title": "CyVerse Curated"
+        #     }
+        # ],
+        'author': 'Updated Metadata Author',
+        # "license_id": "notspecified",
+        # "license_title": "License not specified",
+        # 'author_email': 'john.doe@example.com',
+        # 'tags': [{'name': 'updated'}, {'name': 'metadata'}],
+        # 'extras': extras
+    }
+    dataset_response = update_dataset_metadata(id, data)
+    pretty_print(dataset_response)
+
+
+
     # # Upload a resource to the new dataset
     # dataset_id = dataset_response['result']['id']
     # file_path = r'C:\Users\tdewa\KEYS2024 Project\CKAN_Testing\testData.csv'

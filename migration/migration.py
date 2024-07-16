@@ -1,6 +1,7 @@
 import ckan
 import de
 import json
+import logging
 
 
 def clean_dataset_metadata(dataset_metadata: dict):
@@ -96,10 +97,10 @@ def get_title(dataset_metadata: dict):
 
     # If the title is a list, join the elements with a comma
     if isinstance(title, list):
-        return ", ".join(title)
+        return (", ".join(title)).strip()
 
     # Return the title
-    return title
+    return title.strip()
 
 
 def get_author(dataset_metadata: dict):
@@ -174,6 +175,44 @@ def get_publication_year(dataset_metadata: dict):
                 return dataset_metadata['PublicationYear'][0][:4]
 
 
+def get_description(dataset_metadata: dict):
+    try:
+        return dataset_metadata['description']
+    except KeyError:
+        return dataset_metadata['Description']
+
+
+def get_license_info(data: dict, dataset_metadata: dict):
+    # Try-Except block to check whether the key is 'rights' or 'Rights' in the dataset metadata
+    try:
+        # Set the keys for the license depending on the license specified in the dataset metadata
+        if "ODC PDDL" in dataset_metadata['rights']:
+            data['license_id'] = "odc-pddl"
+            data['license_title'] = "Open Data Commons Public Domain Dedication and License (PDDL)"
+            data['license_url'] = "http://www.opendefinition.org/licenses/odc-pddl"
+        elif "CC0" in dataset_metadata['rights']:
+            data['license_id'] = "cc-zero"
+            data['license_title'] = "Creative Commons CCZero"
+            data['license_url'] = "http://www.opendefinition.org/licenses/cc-zero"
+        else:
+            data['license_id'] = "notspecified"
+            data['license_title'] = "License not specified"
+    except KeyError:
+        # Set the keys for the license depending on the license specified in the dataset metadata
+        if "ODC PDDL" in dataset_metadata['Rights']:
+            data['license_id'] = "odc-pddl"
+            data['license_title'] = "Open Data Commons Public Domain Dedication and License (PDDL)"
+            data['license_url'] = "http://www.opendefinition.org/licenses/odc-pddl"
+        elif "CC0" in dataset_metadata['Rights']:
+            data['license_id'] = "cc-zero"
+            data['license_title'] = "Creative Commons CCZero"
+            data['license_url'] = "http://www.opendefinition.org/licenses/cc-zero"
+        else:
+            data['license_id'] = "notspecified"
+            data['license_title'] = "License not specified"
+
+    return data
+
 def get_extras(dataset_metadata: dict, curated=True):
     """
     Get the extras list for the dataset from the dataset metadata.
@@ -211,6 +250,52 @@ def get_extras(dataset_metadata: dict, curated=True):
     return extras
 
 
+def get_tags(dataset_metadata):
+    """
+    Extracts tags from the dataset metadata.
+
+    Args:
+        dataset_metadata (dict): The dataset metadata dictionary.
+
+    Returns:
+        list: A list of tags extracted from the metadata.
+    """
+    tags = []
+    if 'subject' in dataset_metadata:
+        if isinstance(dataset_metadata['subject'], str):
+            subjects = dataset_metadata['subject'].replace("(", "").replace(")", "").replace("&", "-").split(',')
+            tags = [{'name': subject} for subject in subjects]
+        else:
+            tags = [{'name': subject.replace("(", "").replace(")", "").replace("&", "-").replace("#", "-")} for
+                    subject in dataset_metadata['subject']]
+            # Go through each tag in the tags list and check if any of them are separated by a comma.
+            # If they are, split them into separate tags
+            for tag in tags[:]:
+                if ', ' in tag['name']:
+                    tags.remove(tag)
+                    tags += [{'name': t.strip()} for t in tag['name'].split(',')]
+    return tags
+
+
+def get_name_from_title(title):
+    """
+    Get the name of the dataset from the title of the dataset.
+    Args:
+        title (str): The title of the dataset.
+
+    Returns:
+        str: The name of the dataset.
+    """
+
+    # Remove any special characters from the title
+    name = title.replace(" ", "_").replace(":", "").replace(",", "").replace("(", "").replace(")", "").replace("/", "")
+
+    # If the length of the name is greater than 100, truncate it to 100 characters
+    if len(name) > 100:
+        name = name[:100]
+
+    return name
+
 def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='cyverse', curated=True):
     dataset_metadata = clean_dataset_metadata(dataset_metadata)
     # pretty_print(dataset_metadata)
@@ -235,79 +320,33 @@ def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='
 
     # Get the title of the dataset
     if title is None:
-        title = get_title(dataset_metadata).strip()
-    # Set the 'name' key to the title of the dataset with unallowed characters replaced
-    name = (title.lower().replace(' ', '-').replace('(', '').replace(')', '')
-            .replace('.', '-').replace('"', '').replace('/', '-')
-            .replace(',', '').replace(':', '').replace("*", "-")
-            .replace("'", "-").replace('&', '-').replace("’", "-"))
-    # If the length of the name is greater than 100, truncate it to 100 characters
-    if len(name) > 100:
-        name = name[:100]
-    data['name'] = name
+        title = get_title(dataset_metadata)
+
+    # Set the 'name' key to the name of the dataset
+    data['name'] = get_name_from_title(title)
 
     # Set the 'title' key to the title of the dataset
     data['title'] = title
 
-    # Set the 'notes' key to the description of the dataset depending on
-    # whether the description is stored in the 'description' key or 'Description' key
-    try:
-        data['notes'] = dataset_metadata['description']
-    except KeyError:
-        data['notes'] = dataset_metadata['Description']
+    # Set the 'notes' key to the description of the dataset
+    data['notes'] = get_description(dataset_metadata)
 
     # Set the 'author' key to the creator of the dataset
     data['author'] = get_author(dataset_metadata)
 
-    # Try-Except block to check whether the key is 'rights' or 'Rights' in the dataset metadata
-    try:
-        # Set the keys for the license depending on the license specified in the dataset metadata
-        if "ODC PDDL" in dataset_metadata['rights']:
-            data['license_id'] = "odc-pddl"
-            data['license_title'] = "Open Data Commons Public Domain Dedication and License (PDDL)"
-            data['license_url'] = "http://www.opendefinition.org/licenses/odc-pddl"
-        elif "CC0" in dataset_metadata['rights']:
-            data['license_id'] = "cc-zero"
-            data['license_title'] = "Creative Commons CCZero"
-            data['license_url'] = "http://www.opendefinition.org/licenses/cc-zero"
-        else:
-            data['license_id'] = "notspecified"
-            data['license_title'] = "License not specified"
-    except KeyError:
-        # Set the keys for the license depending on the license specified in the dataset metadata
-        if "ODC PDDL" in dataset_metadata['Rights']:
-            data['license_id'] = "odc-pddl"
-            data['license_title'] = "Open Data Commons Public Domain Dedication and License (PDDL)"
-            data['license_url'] = "http://www.opendefinition.org/licenses/odc-pddl"
-        elif "CC0" in dataset_metadata['Rights']:
-            data['license_id'] = "cc-zero"
-            data['license_title'] = "Creative Commons CCZero"
-            data['license_url'] = "http://www.opendefinition.org/licenses/cc-zero"
-        else:
-            data['license_id'] = "notspecified"
-            data['license_title'] = "License not specified"
+    # Set license information in the data
+    data = get_license_info(data, dataset_metadata)
 
-    # If there is a 'subject' key in the dataset metadata,
-    # add it to the tags depending on whether it's a string or a list
-    if 'subject' in dataset_metadata:
-        if isinstance(dataset_metadata['subject'], str):
-            subjects = dataset_metadata['subject'].replace("(", "").replace(")", "").replace("&", "-").split(',')
-            data['tags'] = [{'name': subject} for subject in subjects]
-        else:
-            data['tags'] = [{'name': subject.replace("(", "").replace(")", "").replace("&", "-").replace("#", "-")} for
-                            subject in dataset_metadata['subject']]
-            # Go through each tag in the tags list and check if any of them are separated by a comma.
-            # If they are, split them into separate tags
-            for tag in data['tags']:
-                if ', ' in tag['name']:
-                    data['tags'].remove(tag)
-                    data['tags'] += [{'name': t.strip()} for t in tag['name'].split(',')]
+    # Set the 'tags' key to the tags extracted from the dataset metadata
+    data['tags'] = get_tags(dataset_metadata)
 
     # If there is a 'version' or 'Version' key in the dataset metadata, add it to the data dictionary
     if 'version' in dataset_metadata:
         data['version'] = dataset_metadata['version']
     elif 'Version' in dataset_metadata:
         data['version'] = dataset_metadata['Version']
+
+    de.pretty_print(data)
 
     # Create the dataset
     dataset_response = ckan.create_dataset(data)
@@ -394,6 +433,7 @@ def check_files_transferred(de_dataset, ckan_dataset):
         bool: True if all files have been transferred, False otherwise
     """
     print("Checking if all files transferred...")
+    logging.info("Checking if all files transferred...")
 
     ckan_files = ckan_dataset['resources']
     ckan_num_files = len(ckan_files)
@@ -403,15 +443,18 @@ def check_files_transferred(de_dataset, ckan_dataset):
     # Get the total number of files in the dataset
     de_num_files = de_files['total']
     print("Number of Files in DE:", de_num_files)
+    logging.info(f"Number of Files in DE: {de_num_files}")
 
     if de_num_files == ckan_num_files:
         print("All files have been transferred. No action needed.")
+        logging.info("All files have been transferred. No action needed.")
         return True
 
     # Pass the number of files to the get_files function to get all the files
     de_files = de.get_files(de_dataset['path'], limit=de_num_files)
 
     print("Transferring remaining files...")
+    logging.info("Transferring remaining files...")
     # Check which of the files are not in CKAN and transfer them
     for num, de_file in enumerate(de_files['files']):
         de_file_title = de_file['label']
@@ -421,6 +464,7 @@ def check_files_transferred(de_dataset, ckan_dataset):
                 break
         else:
             print(f"\t{num} - Transferring file:", de_file_title)
+            logging.info(f"{num} - Transferring file: {de_file_title}")
             file_metadata = de.get_all_metadata_file(de_file)
             data = {
                 'package_id': ckan_dataset['id'],
@@ -436,7 +480,50 @@ def check_files_transferred(de_dataset, ckan_dataset):
     return False
 
 
-if __name__ == '__main__':
+def is_empty_dataset(dataset_metadata: dict):
+    # check if the length of the dataset_metadata is 3
+    if len(dataset_metadata) == 3 and 'date_created' in dataset_metadata and 'date_modified' in dataset_metadata and 'de_path' in dataset_metadata:
+        return True
+    return False
+
+
+def is_metadata_updated(de_dataset_metadata: dict, ckan_dataset_metadata: dict):
+    # 1. Check if the extras are the same
+    extras = get_extras(de_dataset_metadata, curated=True)
+
+    keys_to_ignore = ['Citation', 'Date created in discovery environment', 'Date last modified in discovery environment']
+    extras = [extra for extra in extras if extra['key'] not in keys_to_ignore]
+    ckan_dataset_metadata['extras'] = [extra for extra in ckan_dataset_metadata['extras'] if extra['key'] not in keys_to_ignore]
+
+    # Check if the extras are the same. We need to sort them because the order of the extras may be different.
+    if sorted(extras, key=lambda x: x['key']) == sorted(ckan_dataset_metadata['extras'], key=lambda x: x['key']):
+        print("Metadata is the same")
+    else:
+        print("Metadata is different")
+        return False
+
+    # 2. Check if the titles are the same
+    if get_title(de_dataset_metadata) == ckan_dataset_metadata['title']:
+        print("Titles are the same")
+    else:
+        print("Titles are different")
+        return False
+
+    # 3. Check if the descriptions are the same
+    if get_description(de_dataset_metadata) == ckan_dataset_metadata['notes']:
+        print("Descriptions are the same")
+    else:
+        print("Descriptions are different")
+        return False
+
+
+
+
+
+
+
+
+def main():
     # Create a .txt script that will be used to log the output of the script
     file = open("migration_log.txt", "w")
 
@@ -454,32 +541,44 @@ if __name__ == '__main__':
     # if they exist in CKAN and whether they need to be updated
     for de_dataset in de_datasets:
         new_ckan_title = None
-        if count == 205:
-            print("Skipping #205: No metadata dataset\n")
-            file.write("Skipping #205: No metadata dataset\n")
-            count += 1
-            continue
-        else:
+        # if count == 205:
+        #     de_dataset_metadata = de.get_all_metadata_dataset(de_dataset)
+        #     pretty_print(de_dataset_metadata)
+        #     print("Skipping #205: No metadata dataset\n")
+        #     file.write("Skipping #205: No metadata dataset\n")
+        #     logging.info("Skipping #205: No metadata dataset")
+        #     count += 1
+        #     continue
+        if count >= 0:
             # Get the metadata for the dataset in the discovery environment
             de_dataset_metadata = de.get_all_metadata_dataset(de_dataset)
 
+            # Check if the dataset is empty
+            if is_empty_dataset(de_dataset_metadata):
+                print(f"{count} - Skipping: Empty Dataset")
+                file.write(f"{count} - Skipping: Empty Dataset\n")
+                logging.info(f"{count} - Skipping: Empty Dataset")
+                count += 1
+                continue
+
             # Get the title of the dataset in the discovery environment
-            de_dataset_title = get_title(de_dataset_metadata).strip()
+            de_dataset_title = get_title(de_dataset_metadata)
             # print(f"Discovery Environment Dataset Title: {de_dataset_title}")
 
             # Iterate through each dataset in CKAN to see if the titles match
             for ckan_dataset in ckan_datasets:
                 # pretty_print(ckan_dataset)
                 # Get the title of the dataset in CKAN
-                ckan_dataset_title = ckan_dataset['title'].strip()
+                ckan_dataset_title = ckan_dataset['title']
                 # print(f"CKAN Dataset Title: {ckan_dataset_title}")
                 if de_dataset_title == ckan_dataset_title:
                     print(f"{count} - Matched: {de_dataset_title}")
                     file.write(f"{count} - Matched: {de_dataset_title}\n")
+                    logging.info(f"{count} - Matched: {de_dataset_title}")
 
                     # Check if all the files/resources have been transferred from DE to CKAN
                     # If not, then transfer the remaining files
-                    check_files_transferred(de_dataset, ckan_dataset)
+                    result = check_files_transferred(de_dataset, ckan_dataset)
 
                     # Get the last modified date for the dataset in the discovery environment
                     last_modified_de = de_dataset_metadata['date_modified']
@@ -488,11 +587,6 @@ if __name__ == '__main__':
                     for extra in ckan_dataset['extras']:
                         if extra['key'] == 'Date last modified in discovery environment':
                             last_modified_ckan = extra['value']
-
-                    print(f"Last Modified DE: {last_modified_de}")
-                    file.write(f"Last Modified DE: {last_modified_de}\n")
-                    print(f"Last Modified CKAN: {last_modified_ckan}")
-                    file.write(f"Last Modified CKAN: {last_modified_ckan}\n")
 
                     # If the dataset in the discovery environment has been modified update the dataset in CKAN
                     # by deleting the old dataset and creating a new one with the updated metadata and files
@@ -505,11 +599,13 @@ if __name__ == '__main__':
                             ckan_dataset_id = ckan_dataset['id']
                             print("Rewriting")
                             file.write("Rewriting\n\n")
+                            logging.info("Rewriting")
                             ckan.delete_dataset(ckan_dataset_id)
                             migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
                     else:
                         print("\tNo Changes Made. Skipping...")
                         file.write("\tNo Changes Made. Skipping...\n")
+                        logging.info("No Changes Made. Skipping...")
 
                     # Break out of the loop if the dataset is found in CKAN
                     break
@@ -518,14 +614,43 @@ if __name__ == '__main__':
             else:
                 print(f"{count} - Creating New Dataset in CKAN: {de_dataset_title}")
                 file.write(f"{count} - Creating New Dataset in CKAN: {de_dataset_title}\n")
+                logging.info(f"{count} - Creating New Dataset in CKAN: {de_dataset_title}")
                 migrate_dataset_and_files(de_dataset_metadata, new_ckan_title)
                 print("Creation Complete.")
                 file.write("Creation Complete.\n")
+                logging.info("Creation Complete.")
 
             print("\n")
             file.write("\n\n")
+            logging.info("\n\n")
         count += 1
-
     file.close()
 
-    # migrate_dataset_and_files(de.get_all_metadata_dataset(de_datasets[18]))
+
+
+if __name__ == '__main__':
+    # Set up logging to output to both stdout and a file
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(message)s',
+        handlers=[logging.StreamHandler()]  # Only use StreamHandler for stdout
+    )
+
+    # Get the list of datasets in the discovery environment
+    de_datasets = de.get_datasets()
+    # Get the title of the dataset in the discovery environment
+    de_dataset_title = get_title(de.get_all_metadata_dataset(de_datasets[0]))
+
+    # Get the list of datasets in CKAN by group or organization
+    # ckan_datasets = ckan.list_datasets(group='cyverse-curated')
+    ckan_datasets = ckan.list_datasets(group="cyverse-curated")
+
+    for ckan_dataset in ckan_datasets:
+        if ckan_dataset['title'] == de_dataset_title:
+            is_metadata_updated(de.get_all_metadata_dataset(de_datasets[0]), ckan_dataset)
+
+
+
+
+    # logging.info("Starting Migration Script...\n")
+    # main()

@@ -1,7 +1,9 @@
+
 import requests
 import json
 from datetime import datetime, timedelta
 from requests.auth import HTTPBasicAuth
+import migration
 
 def get_de_api_key(username, password):
     """
@@ -34,7 +36,7 @@ base_url = 'https://de.cyverse.org/terrain'
 api_key = 'Bearer ' + get_de_api_key('tanmaytest', 'password123')
 
 # Headers for the requests
-headers = {
+default_headers = {
     'Authorization': api_key
 }
 
@@ -71,7 +73,7 @@ def convert_to_date(milliseconds):
     return date_str
 
 
-def get_metadata(data_id):
+def get_metadata(data_id, headers=default_headers):
     """
     Get metadata for a specific data ID.
 
@@ -175,14 +177,13 @@ def get_all_metadata_file(file):
     metadata_dict['file_type'] = file_type
 
     # Construct the WebDAV location URL
-    web_dav_location = ("https://data.cyverse.org/dav-anon/iplant/commons/cyverse_curated/"
-                        + file['path'].replace('/iplant/home/shared/commons_repo/curated/', ''))
+    web_dav_location = "https://data.cyverse.org/dav-anon" + file['path']
     metadata_dict['web_dav_location'] = web_dav_location
 
     return metadata_dict
 
 
-def get_files(path, limit=10):
+def get_files(path, limit=10, headers=default_headers):
     """
     Get the list of files in a specified directory.
 
@@ -207,7 +208,7 @@ def get_files(path, limit=10):
         return None
 
 
-def get_datasets(path='/iplant/home/shared/commons_repo/curated/'):
+def get_datasets(path='/iplant/home/shared/commons_repo/curated/', headers=default_headers):
     """
     Get a list of all datasets with some of their metadata. The rest of the metadata can be retrieved using the get_metadata function.
 
@@ -233,18 +234,40 @@ def get_datasets(path='/iplant/home/shared/commons_repo/curated/'):
         return None
 
 
+
 # For testing purposes
 if __name__ == '__main__':
     # file_directory_path = '/iplant/home/shared/commons_repo/curated/Carolyn_Lawrence_Dill_GOMAP_Banana_NCBI_ASM31385v2_February_2021.r1/0_GOMAP-input'
 
     # get_files(file_directory_path)
-    datasets = get_datasets('/iplant/home/shared/commons_repo/curated/Carolyn_Lawrence_Dill_GOMAP_Barrel_Clover_LIS_R108.gnmHiC_1.ann1.Y8NH_November_2022_v1.r1')
-    pretty_print(datasets)
-    print(len(datasets))
+    datasets = get_datasets('/iplant/home/shared/commons_repo/curated/')
+    # pretty_print(datasets)
+    # print(len(datasets))
 
     # for dataset in datasets:
     #     dataset_metadata = get_all_metadata_dataset(dataset)
+    #     try:
+    #         print(f"Title: {migration.get_title(dataset_metadata)}")
+    #     except Exception as e:
+    #         print(f"Error: {e}")
     #     pretty_print(dataset_metadata)
+    #     print('\n\n')
+
+    files = get_files(datasets[18]['path'])
+    print("FILES: ")
+    for file in files['files']:
+        file_metadata = get_all_metadata_file(file)
+        pretty_print(file_metadata)
+        # pretty_print(file)
+        print('\n')
+    print("\n")
+    print("FOLDERS: ")
+    for folder in files['folders']:
+        folder_metadata = get_all_metadata_file(folder)
+        pretty_print(folder_metadata)
+        # pretty_print(folder)
+        print('\n')
+
 
     # pretty_print(get_all_metadata_dataset((datasets[18])))
     #

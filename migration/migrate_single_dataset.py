@@ -33,35 +33,47 @@ def get_de_api_key(username, password):
         return None
 
 
-parser = argparse.ArgumentParser(description='Add a single dataset from the Data Store to a CKAN organization.')
-parser.add_argument('data_store_path', help='The absolute path to the Data Store folder containing the dataset')
-parser.add_argument('ckan_org', help='The name of the CKAN organization that owns the dataset')
-parser.add_argument('username', help='The CyVerse account username')
-parser.add_argument('password', help='The CyVerse account password')
-args = parser.parse_args()
+# parser = argparse.ArgumentParser(description='Add a single dataset from the Data Store to a CKAN organization.')
+# parser.add_argument('data_store_path', help='The absolute path to the Data Store folder containing the dataset')
+# parser.add_argument('ckan_org', help='The name of the CKAN organization that owns the dataset')
+# parser.add_argument('username', help='The CyVerse account username')
+# parser.add_argument('password', help='The CyVerse account password')
+# args = parser.parse_args()
+#
+# print("Absolute Path:", args.data_store_path)
+# print("Name of organization:", args.ckan_org)
+# print("CyVerse Username:", args.username)
+# print("CyVerse Password:", args.password)
+# print("\n")
 
-print("Absolute Path:", args.data_store_path)
-print("Name of organization:", args.ckan_org)
-print("CyVerse Username:", args.username)
-print("CyVerse Password:", args.password)
-print("\n")
 
-# Get the DE API token
-token = get_de_api_key(args.username, args.password)
+def migrate_dataset(data_store_path, ckan_org, username, password):
+    # Get the DE API token
+    token = get_de_api_key(username, password)
 
-# Get the directory by cutting off the last part of the path
-path_parts = args.data_store_path.split('/')
-directory_path = '/'.join(path_parts[:-1])
-print("Directory Path:", directory_path)
+    if token is None:
+        raise Exception("Error obtaining DE API key")
 
-datasets = de.get_datasets(directory_path)
+    headers = {
+        'Authorization': f'Bearer {token}'
+    }
 
-for dataset in datasets:
-    if dataset['path'] == args.data_store_path:
-        dataset_metadata = de.get_all_metadata_dataset(dataset)
-        break
+    # Get the directory by cutting off the last part of the path
+    path_parts = data_store_path.split('/')
+    directory_path = '/'.join(path_parts[:-1])
+    print("Directory Path:", directory_path)
 
-# Migrate files to CKAN
-migration.migrate_dataset_and_files(dataset_metadata, organization='tanmay-s-playground', curated=False)
+    datasets = de.get_datasets(directory_path, headers)
+
+    for dataset in datasets:
+        if dataset['path'] == data_store_path:
+            dataset_metadata = de.get_all_metadata_dataset(dataset)
+            break
+
+    # Migrate files to CKAN
+    migration.migrate_dataset_and_files(dataset_metadata, organization=ckan_org, curated=False)
+
+if __name__ == '__main__':
+    migrate_dataset("/iplant/home/shared/aegis", "cyverse", "tanmaytest", "password123")
 
 
