@@ -4,10 +4,9 @@ import json
 
 import sys
 sys.path.insert(0, r'C:\Users\tdewa\KEYS2024 Project\data-commons\migration')
-# import migration.ckan as ckan
-# import migration.de as de
 import ckan
 import de
+import migration
 
 import file_utils as fu
 import log_utils as lu
@@ -47,17 +46,19 @@ def handle_submit_migrate(username, password, de_link, convert_csv, title, descr
     missing_fields = [key for key, value in metadata_status.items() if not value]
     visible_fields = {"title": title, "description": description, "author": author}
     empty_fields = [key for key, value in visible_fields.items() if
-                    key in metadata_status and metadata_status[key] == False and not value]
+                    key in metadata_status and metadata_status[key] is False and not value]
 
     # Return messages for missing and empty fields
     if missing_fields and empty_fields:
-        return f"Missing the following fields in the discovery environment: {', '.join(missing_fields)}", metadata_status
+        return (f"Missing the following fields in the discovery environment: "
+                f"{', '.join(missing_fields)}"), metadata_status
     if empty_fields:
-        return f"Please fill in the following required fields: {', '.join(empty_fields)}", metadata_status
+        return (f"Please fill in the following required fields: "
+                f"{', '.join(empty_fields)}"), metadata_status
 
     # Migrate dataset to CKAN
-    return migrate_utils.migrate_dataset_to_ckan(username, password, de_link, title, description, author,
-                                        convert_csv), metadata_status
+    return migrate_utils.migrate_dataset_to_ckan(username, password, de_link,
+                                                 title, description, author, convert_csv), metadata_status
 
 
 def handle_submit_croissant(username, password, de_link, title, description, author):
@@ -77,33 +78,6 @@ def handle_submit_croissant(username, password, de_link, title, description, aut
         dict: Metadata status.
         str: Output filename.
     """
-    # if not username or not password or not de_link:
-    #     return "Username, password, and DE link are required.", {}, None
-    #
-    # # Check the availability of metadata
-    # metadata_status = check_metadata_availability(de_link, username, password)
-    # if metadata_status in ["Error obtaining DE API key. Please check username and password.",
-    #                        "Error obtaining datasets from the Discovery Environment."]:
-    #     return metadata_status, {}, None
-    #
-    # # Determine missing and empty fields
-    # missing_fields = [key for key, value in metadata_status.items() if not value]
-    # visible_fields = {"title": title, "description": description, "author": author}
-    # empty_fields = [key for key, value in visible_fields.items() if key in metadata_status and not value and not value]
-    #
-    # # Return messages for missing and empty fields
-    # if missing_fields and empty_fields:
-    #     return f"Missing the following fields in the discovery environment: {', '.join(missing_fields)}", metadata_status, None
-    # if empty_fields:
-    #     return f"Please fill in the following required fields: {', '.join(empty_fields)}", metadata_status, None
-    #
-    # # Use metadata values if not provided
-    # if not title:
-    #     title = metadata_status.get("title", "")
-    # if not description:
-    #     description = metadata_status.get("description", "")
-    # if not author:
-    #     author = metadata_status.get("author", "")
 
     if not username or not password or not de_link:
         return "Username, password, and DE link are required.", {}
@@ -119,14 +93,13 @@ def handle_submit_croissant(username, password, de_link, title, description, aut
     missing_fields = [key for key, value in metadata_status.items() if not value]
     visible_fields = {"title": title, "description": description, "author": author}
     empty_fields = [key for key, value in visible_fields.items() if
-                    key in metadata_status and metadata_status[key] == False and not value]
+                    key in metadata_status and metadata_status[key] is False and not value]
 
     # Return messages for missing and empty fields
     if missing_fields and empty_fields:
         return f"Missing the following fields in the discovery environment: {', '.join(missing_fields)}", metadata_status, None
     if empty_fields:
         return f"Please fill in the following required fields: {', '.join(empty_fields)}", metadata_status, None
-
 
     # Generate Croissant JSON-LD file
     output_filename = fu.generate_croissant_json(username, password, de_link, title, description, author)
@@ -164,7 +137,7 @@ def handle_submit_dcat(username, password, de_link, title, description, author):
     missing_fields = [key for key, value in metadata_status.items() if not value]
     visible_fields = {"title": title, "description": description, "author": author}
     empty_fields = [key for key, value in visible_fields.items() if
-                    key in metadata_status and metadata_status[key] == False and not value]
+                    key in metadata_status and metadata_status[key] is False and not value]
 
     # Return messages for missing and empty fields
     if missing_fields and empty_fields:
@@ -213,16 +186,23 @@ def handle_upload_croissant(username, password, croissant_file):
 
         # Handle validation errors and warnings
         if errors:
-            return f"Error validating Croissant JSON: Found the following {len(errors)} error(s) during the validation:\n" + "\n".join(
-                errors)
+            return (f"Error validating Croissant JSON: Found the following {len(errors)} "
+                    f"error(s) during the validation:\n") + "\n".join(errors)
         elif warnings:
-            return_message = f"Croissant JSON Uploaded to CKAN with warnings:\n" + "\n".join(warnings)
+            return_message = "Croissant JSON Uploaded to CKAN with warnings:\n" + "\n".join(warnings)
     except Exception as e:
         return f"Error validating Croissant JSON: {str(e)}"
 
     # Extract metadata and prepare CKAN dataset data
     metadata = fu.extract_metadata(croissant_json)
-    data = migrate_utils.prepare_ckan_data(metadata, 'cyverse')
+    print(metadata)
+    data = {}
+    data['name'] = migration.get_name_from_title(metadata.get('title', 'Untitled dataset'))
+    data['title'] = metadata.get('title', 'Untitled dataset')
+    data['notes'] = metadata.get('description', 'No description provided.')
+    data['author'] = metadata.get('author', 'No author provided.')
+    data['owner_org'] = 'cyverse'
+    data['tags'] = metadata.get('keywords', [])
 
     try:
         # Create dataset in CKAN
@@ -286,7 +266,15 @@ def handle_upload_dcat(username, password, dcat_file):
     # Extract metadata and prepare CKAN dataset data
     dataset_info = dcat_json['dataset'][0]
     metadata = fu.extract_metadata(dataset_info)
-    data = ckan.prepare_ckan_data(metadata, 'cyverse')
+    data = {}
+    data['name'] = migration.get_name_from_title(metadata.get('title', 'Untitled dataset'))
+    data['title'] = metadata.get('title', 'Untitled dataset')
+    data['notes'] = metadata.get('description', 'No description provided.')
+    data['author'] = metadata.get('author', 'No author provided.')
+    data['owner_org'] = 'cyverse'
+    data['tags'] = metadata.get('keywords', [])
+
+    de.pretty_print(data)
 
     try:
         # Create dataset in CKAN

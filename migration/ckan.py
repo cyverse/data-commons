@@ -1,12 +1,12 @@
 import requests
 import json
 
-
 # CKAN instance URL
 ckan_url = 'https://ckan.cyverse.rocks/'
 
 # API Key
 api_key = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJid0tfcVU5YUdlQkxScTNuWDRZbkdfRzctRk90bUdzeDh0ZzVwM19GUWJRIiwiaWF0IjoxNzE4MDg0NDcwfQ.f1Zp-LlzrhkqBvBh-bjm7hE0oOJiXKzRutFFjg6ykfo'
+
 
 def get_organizations():
     url = 'https://ckan.cyverse.rocks/api/3/action/organization_list'
@@ -16,6 +16,7 @@ def get_organizations():
     organizations = response.json()
 
     return organizations
+
 
 def create_dataset(data):
     """
@@ -96,15 +97,6 @@ def add_resource_link(data):
     headers = {
         'Authorization': api_key  # API key for authorization
     }
-    # data = {
-    #     'package_id': dataset_id,
-    #     'name': name,
-    #     'description': description,
-    #     'url': url,
-    #     'format': format,  # or any other format that your link represents
-    #     'Date Created in Discovery Environment': date_created_de,
-    #     'Date Last Modified in Discovery Environment': date_modified_de
-    # }
     response = requests.post(resource_url, headers=headers, json=data)  # Send POST request to add resource link
     return response.json()  # Return the JSON response from the API
 
@@ -262,7 +254,8 @@ def delete_dataset(dataset_id):
     data = {
         'id': dataset_id  # ID of the dataset to delete
     }
-    response = requests.post(url, headers=headers, data=json.dumps(data))  # Send POST request to delete dataset
+    # Send POST request to delete dataset
+    response = requests.post(url, headers=headers, data=json.dumps(data))
     return response.json()  # Return the JSON response from the API
 
 
@@ -280,11 +273,14 @@ def delete_all_datasets_in_organization(organization):
     Returns:
         None
     """
-    datasets = list_datasets(organization=organization)  # List all datasets in the organization
+    # List all datasets in the organization
+    datasets = list_datasets(organization=organization)
     for dataset in datasets:
         dataset_id = dataset['id']  # Get the dataset ID
         delete_response = delete_dataset(dataset_id)  # Delete the dataset
-        print(f'Deleted dataset with ID: {dataset_id}. Response: {delete_response}')  # Print confirmation message
+
+        # Print confirmation message
+        print(f'Deleted dataset with ID: {dataset_id}. Response: {delete_response}')
 
 
 def pretty_print(json_data):
@@ -298,177 +294,3 @@ def pretty_print(json_data):
         json_data (dict): JSON data to be pretty-printed.
     """
     print(json.dumps(json_data, indent=4, sort_keys=True))
-
-
-
-
-
-# For testing purposes...
-if __name__ == '__main__':
-
-    pass
-
-    # # Test with organization
-    # organization_datasets = list_datasets(organization="tanmay-s-playground")
-    # print(f"Total datasets in organization: {len(organization_datasets)}")
-    # print(organization_datasets)
-    # print("\n")
-    #
-    # Test with group
-    # group_datasets = list_datasets(group="cyverse-curated")
-    # print(f"Total datasets in group: {len(group_datasets)}")
-    # for dataset in group_datasets:
-    #     pretty_print(dataset)
-    #     print("\n\n\n")
-    #
-    #
-    # # Test without organization or group
-    # all_datasets = list_datasets()
-    # print(f"Total datasets: {len(all_datasets)}")
-    # print(all_datasets)
-
-
-    # # Create a new dataset
-    # extras = [{'key': 'Citation', 'value': 'John Doe (2024). My Dataset. CyVerse Data Commons. DOI 10.12345/abcde'}, {'key': 'DOI', 'value': '10.12345/abcde'}, {'key': 'Publication Year', 'value': '2024'}, {'key': 'Publisher', 'value': 'CyVerse Data Commons'}, {'key': 'resourceType', 'value': 'Example Dataset'}]
-    # data = {
-    #     'name': 'test_dataset',
-    #     'title': 'My Dataset',
-    #     'notes': 'This is a test dataset',
-    #     'owner_org': 'tanmay-s-playground',
-    #     # 'owner_org': 'cyverse',
-    #     'private': False,
-    #     'groups': [
-    #         {
-    #             "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. These data are stable and contents will not change.",
-    #             "display_name": "CyVerse Curated",
-    #             "id": "881288fa-e1bf-4ee8-8894-d97976043e4f",
-    #             "image_display_url": "",
-    #             "name": "cyverse-curated",
-    #             "title": "CyVerse Curated"
-    #         }
-    #     ],
-    #     'author': ['John Doe', 'Jane DOe'],
-    #     # "license_id": "notspecified",
-    #     # "license_title": "License not specified",
-    #     # 'author_email': 'john.doe@example.com',
-    #     'tags': [{'name': 'example'}, {'name': 'dataset'}],
-    #     'extras': extras
-    # }
-    # dataset_response = create_dataset(data)
-    # pretty_print(dataset_response)
-    # data = {
-    #     'package_id': dataset_response['result']['id'],
-    #     'name': 'ex resource',
-    #     'description': 'example reswouce for testing',
-    #     'url': 'https://data.cyverse.org/dav-anon/iplant/home/tedgin/public/bms/data-store-fix',
-    #     'format': '',  # or any other format that your link represents
-    #     'Date Created in Discovery Environment': 'Aug 2, 2016 2:36:59 AM',
-    #     'Date Last Modified in Discovery Environment': 'Aug 2, 2016 11:52:15 AM'
-    # }
-    # add_resource_link(data)
-
-
-
-    # Update the metadata of an existing dataset
-    id = "c34d56be-61b8-4d6b-8814-495e8555691e"
-    extras = [{'key': 'Citation', 'value': 'updated_metadata'}, {'key': 'DOI', 'value': 'updated metadatae'}, {'key': 'Publication Year', 'value': '5646'}, {'key': 'Publisher', 'value': 'CyVerse Data Commons updated metadata'}, {'key': 'resourceType', 'value': 'Example Dataset with updated metadata'}]
-    data = {
-        'name': 'test_dataset_updated_metadata',
-        'title': 'My Dataset with updated metadatra',
-        'notes': 'This is a test dataset WITH UPDATED METADATA',
-        'owner_org': 'tanmay-s-playground',
-        # 'owner_org': 'cyverse',
-        'private': False,
-        # 'groups': [
-        #     {
-        #         "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. These data are stable and contents will not change.",
-        #         "display_name": "CyVerse Curated",
-        #         "id": "881288fa-e1bf-4ee8-8894-d97976043e4f",
-        #         "image_display_url": "",
-        #         "name": "cyverse-curated",
-        #         "title": "CyVerse Curated"
-        #     }
-        # ],
-        'author': 'Updated Metadata Author',
-        # "license_id": "notspecified",
-        # "license_title": "License not specified",
-        # 'author_email': 'john.doe@example.com',
-        # 'tags': [{'name': 'updated'}, {'name': 'metadata'}],
-        # 'extras': extras
-    }
-    dataset_response = update_dataset_metadata(id, data)
-    pretty_print(dataset_response)
-
-
-
-    # # Upload a resource to the new dataset
-    # dataset_id = dataset_response['result']['id']
-    # file_path = r'C:\Users\tdewa\KEYS2024 Project\CKAN_Testing\testData.csv'
-    # resource_response = upload_resource(dataset_id, file_path)
-    # print(f'Resource upload response: {resource_response}')
-
-
-
-    # # Get the dataset ID for a given dataset name
-    # dataset_name = 'ODC PDDL License Testing'
-    # dataset_id = get_dataset_id(dataset_name)
-    # print(dataset_id)
-    # #
-    # # upload_resource(dataset_id, r'C:\Users\tdewa\KEYS2024 Project\CKAN_Testing\testData.csv', 'Test Data with dates', 'This is a test resource for testing dates')
-    # add_resource_link(dataset_id, 'https://data.cyverse.org/dav-anon/iplant/home/tedgin/public/bms/data-store-fix', 'Test data with dates and url', '', 'Aug 2, 2016 2:36:59 AM', 'Aug 2, 2016 11:52:15 AM', 'This is a test resource for testing dates and url')
-    # pretty_print(get_dataset_info(dataset_id))
-
-
-
-    # dataset_name = 'U-Nottm_2016_RIPRleaf_images'
-    # dataset_id = get_dataset_id(dataset_name)
-    # pretty_print(get_dataset_info(dataset_id))
-
-
-
-
-
-    # {'help': 'https://ckan.cyverse.rocks:443/api/3/action/help_show?name=package_show', 'success': True,
-    #  'result': {'author': 'Harel Bacher', 'author_email': '', 'creator_user_id': 'a09d247c-d8ce-4192-8b74-096ebfdc7b48',
-    #             'id': '9f952b8d-4865-4aa9-ae94-960ce42d938b', 'isopen': True, 'license_id': 'odc-pddl',
-    #             'license_title': 'Open Data Commons Public Domain Dedication and License (PDDL)',
-    #             'license_url': 'http://www.opendefinition.org/licenses/odc-pddl', 'maintainer': '',
-    #             'maintainer_email': '', 'metadata_created': '2024-06-11T20:41:40.579265',
-    #             'metadata_modified': '2024-06-11T20:58:08.112055', 'name': 'wheat_drought-stress-phenomics',
-    #             'notes': 'Svevo*Zavitan introgression lines is a sequenced what population harbours wild alleles from the wild emmer wheat (Zavitan) on the genetic background of an elite durum line (Svevo). We screen this population for water stress tolerance and analyzed the image data with PhenoImage GUI software was used for image processing (Zhu et al., 2020). We extracted the key morphological traits derived from RGB images included PSA, plant height and width, plant architecture (convex area), plant density, and water-use efficiency (WUE) on the final day of the experiment. Plant height and plant width were calculated from plant dimensions. Plant architecture (convex area) was calculated to predict plant architecture trajectory. Density was calculated based on the ratio between pixel sum and plant architecture. The relative growth rate (RGR) was calculated by dividing daily pixel accumulation with pixel numbers from the previous day. Daily water-use efficiency (WUEt) was calculated as described by Momen et al. (2019), where (t) represents the day.\r\n',
-    #             'num_resources': 2, 'num_tags': 3,
-    #             'organization': {'id': '98d859a6-c7b8-4021-baec-9158179a0d2c', 'name': 'cyverse', 'title': 'CyVerse',
-    #                              'type': 'organization', 'description': '',
-    #                              'image_url': 'https://cyverse.org/sites/default/files/cyverse_logo_1_0.png',
-    #                              'created': '2024-06-06T09:22:24.851542', 'is_organization': True,
-    #                              'approval_status': 'approved', 'state': 'active'},
-    #             'owner_org': '98d859a6-c7b8-4021-baec-9158179a0d2c', 'private': False, 'state': 'active',
-    #             'title': 'Wheat_drought stress phenomics', 'type': 'dataset', 'url': '', 'version': '', 'extras': [
-    #          {'key': 'Citation',
-    #           'value': 'Harel Bacher (2021). Wheat_drought stress phenomics. CyVerse Data Commons. DOI 10.25739/eztp-dj42'},
-    #          {'key': 'DOI', 'value': '10.25739/eztp-dj42'}, {'key': 'Publication Year', 'value': '2021'},
-    #          {'key': 'Publisher', 'value': 'CyVerse Data Commons'},
-    #          {'key': 'resourceType', 'value': 'Wheat phenomics drought tolerance'}], 'resources': [
-    #          {'cache_last_updated': None, 'cache_url': None, 'created': '2024-06-11T20:42:35.512658',
-    #           'datastore_active': True, 'description': '', 'format': 'CSV', 'hash': '',
-    #           'id': 'f040178b-9a9e-422b-9a8a-568346370cc3', 'last_modified': '2024-06-11T20:42:35.478639',
-    #           'metadata_modified': '2024-06-11T20:42:35.508082', 'mimetype': 'text/csv', 'mimetype_inner': None,
-    #           'name': 'Metadata.csv', 'package_id': '9f952b8d-4865-4aa9-ae94-960ce42d938b', 'position': 0,
-    #           'resource_type': None, 'size': 1368, 'state': 'active',
-    #           'url': 'https://ckan.cyverse.rocks:443/dataset/9f952b8d-4865-4aa9-ae94-960ce42d938b/resource/f040178b-9a9e-422b-9a8a-568346370cc3/download/metadata.csv',
-    #           'url_type': 'upload'},
-    #          {'cache_last_updated': None, 'cache_url': None, 'created': '2024-06-11T20:44:04.770456',
-    #           'datastore_active': False, 'description': '', 'format': 'TXT', 'hash': '',
-    #           'id': '6273b3c3-4f09-40c7-baba-eb802eeebfe5', 'last_modified': '2024-06-11T20:44:04.732241',
-    #           'metadata_modified': '2024-06-11T20:44:05.117585', 'mimetype': 'text/plain', 'mimetype_inner': None,
-    #           'name': 'ReadMe.txt', 'package_id': '9f952b8d-4865-4aa9-ae94-960ce42d938b', 'position': 1,
-    #           'resource_type': None, 'size': 3729, 'state': 'active',
-    #           'url': 'https://ckan.cyverse.rocks:443/dataset/9f952b8d-4865-4aa9-ae94-960ce42d938b/resource/6273b3c3-4f09-40c7-baba-eb802eeebfe5/download/readme.txt',
-    #           'url_type': 'upload'}], 'tags': [
-    #          {'display_name': 'Wheat wild introgression lines', 'id': '518127ea-2041-48d8-956f-c75ce4a068c9',
-    #           'name': 'Wheat wild introgression lines', 'state': 'active', 'vocabulary_id': None},
-    #          {'display_name': 'wheat phenomics', 'id': '08d517b6-f78c-40fd-a416-3d0ab883f505',
-    #           'name': 'wheat phenomics', 'state': 'active', 'vocabulary_id': None},
-    #          {'display_name': 'wheat water stress tolerance', 'id': '43bb9759-10f4-4376-b9df-52e0bd164c6a',
-    #           'name': 'wheat water stress tolerance', 'state': 'active', 'vocabulary_id': None}], 'groups': [],
-    #             'relationships_as_subject': [], 'relationships_as_object': []}}

@@ -1,3 +1,5 @@
+import sys
+sys.path.insert(0, r'C:\Users\tdewa\KEYS2024 Project\data-commons\migration')
 import ckan
 import de
 import json
@@ -213,6 +215,7 @@ def get_license_info(data: dict, dataset_metadata: dict):
 
     return data
 
+
 def get_extras(dataset_metadata: dict, curated=True):
     """
     Get the extras list for the dataset from the dataset metadata.
@@ -288,13 +291,15 @@ def get_name_from_title(title):
     """
 
     # Remove any special characters from the title
-    name = title.replace(" ", "_").replace(":", "").replace(",", "").replace("(", "").replace(")", "").replace("/", "")
+    name = (title.replace(" ", "_").replace(":", "").replace(",", "")
+            .replace("(", "").replace(")", "").replace("/", "")).lower()
 
     # If the length of the name is greater than 100, truncate it to 100 characters
     if len(name) > 100:
         name = name[:100]
 
     return name
+
 
 def migrate_dataset_and_files(dataset_metadata: dict, title=None, organization='cyverse', curated=True):
     dataset_metadata = clean_dataset_metadata(dataset_metadata)
@@ -517,12 +522,6 @@ def is_metadata_updated(de_dataset_metadata: dict, ckan_dataset_metadata: dict):
         return False
 
 
-
-
-
-
-
-
 def main():
     # Create a .txt script that will be used to log the output of the script
     file = open("migration_log.txt", "w")
@@ -627,7 +626,6 @@ def main():
     file.close()
 
 
-
 if __name__ == '__main__':
     # Set up logging to output to both stdout and a file
     logging.basicConfig(
@@ -648,9 +646,6 @@ if __name__ == '__main__':
     for ckan_dataset in ckan_datasets:
         if ckan_dataset['title'] == de_dataset_title:
             is_metadata_updated(de.get_all_metadata_dataset(de_datasets[0]), ckan_dataset)
-
-
-
 
     # logging.info("Starting Migration Script...\n")
     # main()

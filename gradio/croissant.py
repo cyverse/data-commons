@@ -1,7 +1,11 @@
 import json
 import hashlib
 
-def create_croissant_jsonld(title, description, author, distributions=[], keywords=[], identifier="", publisher_name="", citation="", date_published="", license_url="", version=""):
+
+def create_croissant_jsonld(title, description, author, distributions=[],
+                            keywords=[], identifier="", publisher_name="",
+                            citation="", date_published="", license_url="",
+                            version=""):
     """
     Create a Croissant-compliant JSON-LD file.
 
@@ -79,6 +83,7 @@ def create_croissant_jsonld(title, description, author, distributions=[], keywor
     }
     return croissant
 
+
 def create_distribution(title, format, download_url, description=""):
     # Generate a unique identifier using the SHA-256 hash of the download URL
     identifier = hashlib.sha256(download_url.encode()).hexdigest()
@@ -95,6 +100,8 @@ def create_distribution(title, format, download_url, description=""):
         "sha256": identifier  # Example SHA-256 hash
     }
 
+
+# Example usage
 if __name__ == '__main__':
     # Example usage
     title = "Example Dataset"
@@ -107,11 +114,16 @@ if __name__ == '__main__':
     license_url = "http://example.org/license"
     version = "1.0.0"
     distributions = [
-        create_distribution("Example Dataset CSV", "CSV file of the example dataset.", "text/csv", "http://example.org/dataset/1.csv"),
-        create_distribution("Example Dataset Parquet", "Parquet file of the example dataset.", "application/x-parquet", "http://example.org/dataset/1.parquet")
+        create_distribution("Example Dataset CSV",
+                            "CSV file of the example dataset.",
+                            "text/csv",
+                            "http://example.org/dataset/1.csv"),
+        create_distribution("Example Dataset Parquet",
+                            "Parquet file of the example dataset.",
+                            "application/x-parquet",
+                            "http://example.org/dataset/1.parquet")
     ]
 
-    # croissant_jsonld = create_croissant_jsonld(title, description, identifier, keywords, publisher_name, distributions, citation, date_published, license_url, version)
     croissant_jsonld = create_croissant_jsonld(title, description)
 
     # Save to file

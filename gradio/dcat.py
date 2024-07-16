@@ -2,6 +2,7 @@ import json
 import hashlib
 import datetime
 
+
 def generate_sha256_hash(file_path):
     """
     Generate the SHA-256 hash for a given file.
@@ -15,7 +16,11 @@ def generate_sha256_hash(file_path):
     identifier = hashlib.sha256(file_path.encode()).hexdigest()
     return identifier
 
-def create_dcat_jsonld(title, description, author, distributions=[], keywords=[], identifier="", publisher_name="", citation="", date_published="", license_url="", version=""):
+
+def create_dcat_jsonld(title, description, author, distributions=[],
+                       keywords=[], identifier="", publisher_name="",
+                       citation="", date_published="", license_url="",
+                       version=""):
     """
     Create a DCAT-compliant JSON-LD file.
 
@@ -66,6 +71,7 @@ def create_dcat_jsonld(title, description, author, distributions=[], keywords=[]
     }
     return dcat
 
+
 def create_distribution(title, format, file_path, description=""):
     """
     Create distribution metadata for a file.
@@ -108,11 +114,19 @@ if __name__ == '__main__':
     parquet_file_path = "path/to/example_dataset.parquet"
 
     distributions = [
-        create_distribution("Example Dataset CSV", "CSV file of the example dataset.", "text/csv", "http://example.org/dataset/1.csv", csv_file_path),
-        create_distribution("Example Dataset Parquet", "Parquet file of the example dataset.", "application/x-parquet", "http://example.org/dataset/1.parquet", parquet_file_path)
+        create_distribution("Example Dataset CSV",
+                            "CSV file of the example dataset.",
+                            "text/csv",
+                            "http://example.org/dataset/1.csv"),
+        create_distribution("Example Dataset Parquet",
+                            "Parquet file of the example dataset.",
+                            "application/x-parquet",
+                            "http://example.org/dataset/1.parquet")
     ]
 
-    dcat_jsonld = create_dcat_jsonld(title, description, identifier, keywords, publisher_name, distributions, citation, date_published, license_url, version)
+    dcat_jsonld = create_dcat_jsonld(title, description, identifier,
+                                     keywords, publisher_name, distributions,
+                                     citation, date_published, license_url, version)
 
     # Save to file
     with open("../migration/dcat.json", "w") as f:

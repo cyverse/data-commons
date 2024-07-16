@@ -3,12 +3,17 @@ import ckan
 import de
 import file_utils as fu
 
-def prepare_ckan_data(metadata,  title, description, author, owner_org, curated=False):
+
+def prepare_ckan_data(metadata, owner_org, curated=False, title=None, description=None, author=None):
     """
     Prepare the dataset metadata for CKAN.
     Args:
         metadata: The metadata of the dataset from the discovery environment.
         owner_org: The organization to which the dataset belongs in CKAN.
+        curated: Whether the dataset is curated.
+        title: The title of the dataset.
+        description: The description of the dataset.
+        author: The author of the dataset.
 
     Returns:
         dict: The dataset metadata formatted for CKAN.
@@ -38,7 +43,6 @@ def prepare_ckan_data(metadata,  title, description, author, owner_org, curated=
         data['author'] = migration.get_author(metadata)
 
     return data
-
 
 
 def migrate_dataset_to_ckan(username, password, de_link, title, description, author, convert_csv=False):
@@ -72,7 +76,7 @@ def migrate_dataset_to_ckan(username, password, de_link, title, description, aut
             break
 
     curated = "curated" in de_link
-    data = prepare_ckan_data(dataset_metadata, title, description, author, "cyverse", curated)
+    data = prepare_ckan_data(dataset_metadata, "cyverse", curated, title, description, author)
     if curated:
         data = migration.get_license_info(data, dataset_metadata)
 

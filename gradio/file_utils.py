@@ -4,8 +4,12 @@ import os
 import croissant
 import dcat
 import de
-import migrate_utils
 import migration
+import pandas as pd
+import requests
+from io import BytesIO
+from tempfile import gettempdir
+
 
 def extract_metadata(json_data):
     """
@@ -27,6 +31,7 @@ def extract_metadata(json_data):
         'license_url': json_data.get('license', 'No license specified')
     }
     return metadata
+
 
 def generate_croissant_json(username, password, de_link, title, description, author):
     """
@@ -74,10 +79,18 @@ def generate_croissant_json(username, password, de_link, title, description, aut
     if 'subject' in dataset_metadata:
         subjects = dataset_metadata['subject']
         if isinstance(subjects, str):
-            subjects = subjects.replace("(", "").replace(")", "").replace("&", "-").split(',')
+            subjects = (subjects.replace("(", "")
+                        .replace(")", "")
+                        .replace("&", "-")
+                        .split(','))
             keywords = [subject for subject in subjects]
         else:
-            keywords = [subject.replace("(", "").replace(")", "").replace("&", "-").replace("#", "-") for subject in subjects]
+            keywords = [subject
+                        .replace("(", "")
+                        .replace(")", "")
+                        .replace("&", "-")
+                        .replace("#", "-")
+                        for subject in subjects]
             for tag in keywords:
                 if ', ' in tag:
                     keywords.remove(tag)
@@ -94,17 +107,22 @@ def generate_croissant_json(username, password, de_link, title, description, aut
         files = de.get_files(dataset_metadata['de_path'], limit=num_files)
         for file in files['files']:
             file_metadata = de.get_all_metadata_file(file)
-            distribution = croissant.create_distribution(file_metadata['file_name'], file_metadata['file_type'], file_metadata['web_dav_location'])
+            distribution = croissant.create_distribution(file_metadata['file_name'],
+                                                         file_metadata['file_type'],
+                                                         file_metadata['web_dav_location'])
             distributions.append(distribution)
 
     # Create Croissant JSON-LD
-    croissant_json = croissant.create_croissant_jsonld(title, description, author, keywords=keywords, version=version, distributions=distributions)
+    croissant_json = croissant.create_croissant_jsonld(title, description, author,
+                                                       keywords=keywords, version=version,
+                                                       distributions=distributions)
     temp_dir = tempfile.gettempdir()  # Get temporary directory
     output_filename = os.path.join(temp_dir, "croissant.json")
     with open(output_filename, "w") as f:
         json.dump(croissant_json, f, indent=4)
 
     return output_filename
+
 
 def generate_dcat_json(username, password, de_link, title, description, author):
     """
@@ -152,10 +170,16 @@ def generate_dcat_json(username, password, de_link, title, description, author):
     if 'subject' in dataset_metadata:
         subjects = dataset_metadata['subject']
         if isinstance(subjects, str):
-            subjects = subjects.replace("(", "").replace(")", "").replace("&", "-").split(',')
+            subjects = (subjects.replace("(", "")
+                        .replace(")", "")
+                        .replace("&", "-")
+                        .split(','))
             keywords = [subject for subject in subjects]
         else:
-            keywords = [subject.replace("(", "").replace(")", "").replace("&", "-").replace("#", "-") for subject in subjects]
+            keywords = [subject.replace("(", "")
+                        .replace(")", "").replace("&", "-")
+                        .replace("#", "-")
+                        for subject in subjects]
             for tag in keywords:
                 if ', ' in tag:
                     keywords.remove(tag)
@@ -172,11 +196,15 @@ def generate_dcat_json(username, password, de_link, title, description, author):
         files = de.get_files(dataset_metadata['de_path'], limit=num_files)
         for file in files['files']:
             file_metadata = de.get_all_metadata_file(file)
-            distribution = dcat.create_distribution(file_metadata['file_name'], file_metadata['file_type'], file_metadata['web_dav_location'])
+            distribution = dcat.create_distribution(file_metadata['file_name'],
+                                                    file_metadata['file_type'],
+                                                    file_metadata['web_dav_location'])
             distributions.append(distribution)
 
     # Create DCAT JSON-LD
-    dcat_json = dcat.create_dcat_jsonld(title, description, author, keywords=keywords, version=version, distributions=distributions)
+    dcat_json = dcat.create_dcat_jsonld(title, description, author,
+                                        keywords=keywords, version=version,
+                                        distributions=distributions)
     temp_dir = tempfile.gettempdir()  # Get temporary directory
     output_filename = os.path.join(temp_dir, "dcat.json")
     with open(output_filename, "w") as f:

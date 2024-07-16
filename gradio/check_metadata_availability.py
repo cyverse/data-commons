@@ -1,10 +1,12 @@
 import de
 import migration
 
+
 def check_metadata_availability(de_link, username, password):
     """
     Check the availability of metadata fields in a dataset, specifically title, author, and description.
-    Used to ensure that the most important pieces of metadata are available for migration or for generating a Croissant/DCAT JSON-LD file.
+    Used to ensure that the most important pieces of metadata are available
+    for migration or for generating a Croissant/DCAT JSON-LD file.
     Args:
         de_link: The link to the dataset in the Discovery Environment.
         username: The CyVerse username.
@@ -32,24 +34,23 @@ def check_metadata_availability(de_link, username, password):
 
     return_dict = {}
 
+    # Check the availability of title, author, and description
     try:
-        title = migration.get_title(dataset_metadata)
+        migration.get_title(dataset_metadata)
         return_dict["title"] = True
-    except Exception as e:
+    except Exception:
         return_dict["title"] = False
 
     try:
-        author = migration.get_author(dataset_metadata)
+        migration.get_author(dataset_metadata)
         return_dict["author"] = True
-    except Exception as e:
+    except Exception:
         return_dict["author"] = False
 
     try:
-        description = migration.get_description(dataset_metadata)
+        migration.get_description(dataset_metadata)
         return_dict["description"] = True
-    except Exception as e:
+    except Exception:
         return_dict["description"] = False
-
-    print(return_dict)
 
     return return_dict
