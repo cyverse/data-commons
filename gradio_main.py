@@ -3,7 +3,6 @@ from mlcroissant import Dataset
 import json
 
 import sys
-sys.path.insert(0, r'C:\Users\tdewa\KEYS2024 Project\data-commons\migration')
 import ckan
 import de
 import migration
@@ -461,4 +460,5 @@ iface = gr.TabbedInterface(
 )
 
 # Launch the Gradio interface
+# iface.launch(server_name="0.0.0.0", server_port=7860)
 iface.launch()
