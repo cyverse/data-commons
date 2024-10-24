@@ -1,3 +1,7 @@
+"""
+Validates DCAT JSON against a schema.
+"""
+
 import json
 import jsonschema
 from jsonschema import validate
@@ -39,4 +43,5 @@ def validate_dcat_json(dcat_json):
         validate(instance=dcat_json, schema=dcat_schema)
     except jsonschema.exceptions.ValidationError as err:
         return f"Error validating DCAT JSON: {err.message}"
+
     return None

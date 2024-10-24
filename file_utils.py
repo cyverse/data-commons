@@ -1,14 +1,20 @@
+"""
+Provides utility functions for file and metadata handling.
+"""
+
 import json
 import tempfile
 import os
+from io import BytesIO
+from tempfile import gettempdir
+
+import pandas as pd
+import requests
+
 import croissant
 import dcat
 import de
 import migration
-import pandas as pd
-import requests
-from io import BytesIO
-from tempfile import gettempdir
 
 
 def extract_metadata(json_data):
@@ -83,7 +89,7 @@ def generate_croissant_json(username, password, de_link, title, description, aut
                         .replace(")", "")
                         .replace("&", "-")
                         .split(','))
-            keywords = [subject for subject in subjects]
+            keywords = list(subjects)
         else:
             keywords = [subject
                         .replace("(", "")
@@ -118,7 +124,7 @@ def generate_croissant_json(username, password, de_link, title, description, aut
                                                        distributions=distributions)
     temp_dir = tempfile.gettempdir()  # Get temporary directory
     output_filename = os.path.join(temp_dir, "croissant.json")
-    with open(output_filename, "w") as f:
+    with open(output_filename, "w", encoding="utf-8") as f:
         json.dump(croissant_json, f, indent=4)
 
     return output_filename
@@ -174,7 +180,7 @@ def generate_dcat_json(username, password, de_link, title, description, author):
                         .replace(")", "")
                         .replace("&", "-")
                         .split(','))
-            keywords = [subject for subject in subjects]
+            keywords = list(subjects)
         else:
             keywords = [subject.replace("(", "")
                         .replace(")", "").replace("&", "-")
@@ -207,7 +213,7 @@ def generate_dcat_json(username, password, de_link, title, description, author):
                                         distributions=distributions)
     temp_dir = tempfile.gettempdir()  # Get temporary directory
     output_filename = os.path.join(temp_dir, "dcat.json")
-    with open(output_filename, "w") as f:
+    with open(output_filename, "w", encoding="utf-8") as f:
         json.dump(dcat_json, f, indent=4)
 
     return output_filename
@@ -228,7 +234,7 @@ def convert_csv_to_parquet(files):
     for file in files['files']:
         if file['file_type'] == 'csv':
             csv_url = file['web_dav_location']
-            response = requests.get(csv_url)
+            response = requests.get(csv_url, timeout=10)
             csv_data = pd.read_csv(BytesIO(response.content))
             parquet_filename = file['file_name'].replace('.csv', '.parquet')
             parquet_filepath = os.path.join(gettempdir(), parquet_filename)

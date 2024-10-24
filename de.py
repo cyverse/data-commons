@@ -1,6 +1,10 @@
-import requests
+"""
+Used to manage communication with the CyVerse Discovery Environment (DE).
+"""
+
 import json
 from datetime import datetime
+import requests
 from requests.auth import HTTPBasicAuth
 
 
@@ -19,18 +23,18 @@ def get_de_api_key(username, password):
         str: The access token for DE API.
     """
     url = 'https://de.cyverse.org/terrain/token/keycloak'
-    response = requests.get(url, auth=HTTPBasicAuth(username, password))
+    response = requests.get(url, auth=HTTPBasicAuth(username, password), timeout=10)
 
     if response.status_code == 200:
         token_data = response.json()
         return token_data['access_token']
-    else:
-        print(f"Error obtaining API key: {response.status_code} - {response.text}")
-        return None
+
+    print(f"Error obtaining API key: {response.status_code} - {response.text}")
+    return None
 
 
 # Base URL for the Discovery Environment API
-base_url = 'https://de.cyverse.org/terrain'
+BASE_URL = 'https://de.cyverse.org/terrain'
 
 # Get the API using default login credentials
 api_key = 'Bearer ' + get_de_api_key('tanmaytest', 'password123')
@@ -88,15 +92,15 @@ def get_metadata(data_id, headers=default_headers):
     Returns:
         dict: The metadata for the specified data ID.
     """
-    url = f'{base_url}/filesystem/{data_id}/metadata'  # Construct the API URL for the metadata endpoint
-    response = requests.get(url, headers=headers)  # Send a GET request to the API
+    url = f'{BASE_URL}/filesystem/{data_id}/metadata'  # Construct the API URL for the metadata endpoint
+    response = requests.get(url, headers=headers, timeout=10)  # Send a GET request to the API
     if response.status_code == 200:
         metadata = response.json()  # Parse the JSON response
         return metadata
-    else:
-        # Print error message if the request fails
-        print(f"Error getting metadata: {response.status_code} - {response.text}")
-        return None
+
+    # Print error message if the request fails
+    print(f"Error getting metadata: {response.status_code} - {response.text}")
+    return None
 
 
 def get_all_metadata_dataset(dataset):
@@ -199,16 +203,16 @@ def get_files(path, limit=10, headers=default_headers):
     Returns:
         dict: A dictionary containing the list of files.
     """
-    url = f'{base_url}/secured/filesystem/paged-directory'  # Construct the API URL for the directory endpoint
+    url = f'{BASE_URL}/secured/filesystem/paged-directory'  # Construct the API URL for the directory endpoint
     params = {'limit': limit, 'path': path}  # Set the request parameters
-    response = requests.get(url, headers=headers, params=params)  # Send a GET request to the API
+    response = requests.get(url, headers=headers, params=params, timeout=10)  # Send a GET request to the API
     if response.status_code == 200:
         files = response.json()  # Parse the JSON response
         return files
-    else:
-        # Print error message if the request fails
-        print(f"Error getting files: {response.status_code} - {response.text}")
-        return None
+
+    # Print error message if the request fails
+    print(f"Error getting files: {response.status_code} - {response.text}")
+    return None
 
 
 def get_datasets(path='/iplant/home/shared/commons_repo/curated/', headers=default_headers):
@@ -226,14 +230,14 @@ def get_datasets(path='/iplant/home/shared/commons_repo/curated/', headers=defau
     Returns:
         list: A list of dictionaries, each representing a dataset with its metadata.
     """
-    url = f'{base_url}/secured/filesystem/directory'  # Construct the API URL for the directory endpoint
+    url = f'{BASE_URL}/secured/filesystem/directory'  # Construct the API URL for the directory endpoint
     params = {'path': path}  # Set the request parameters
-    response = requests.get(url, headers=headers, params=params)  # Send a GET request to the API
+    response = requests.get(url, headers=headers, params=params, timeout=10)  # Send a GET request to the API
     if response.status_code == 200:
         directories = response.json()  # Parse the JSON response
         datasets = directories['folders']  # Extract the list of datasets
         return datasets
-    else:
-        # Print error message if the request fails
-        print(f"Error getting directories: {response.status_code} - {response.text}")
-        return None
+
+    # Print error message if the request fails
+    print(f"Error getting directories: {response.status_code} - {response.text}")
+    return None

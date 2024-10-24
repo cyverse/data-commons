@@ -1,3 +1,7 @@
+"""
+Generates Croissant JSON-LD metadata for datasets.
+"""
+
 import json
 import hashlib
 
@@ -127,7 +131,7 @@ if __name__ == '__main__':
     croissant_jsonld = create_croissant_jsonld(title, description)
 
     # Save to file
-    with open("croissant_title_and_description_only.json", "w") as f:
+    with open("croissant_title_and_description_only.json", "w", encoding="utf-8") as f:
         json.dump(croissant_jsonld, f, indent=4)
 
     print("Croissant JSON-LD file created successfully.")

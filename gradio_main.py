@@ -1,8 +1,12 @@
-import gradio as gr
-from mlcroissant import Dataset
+"""
+Defines the Gradio-based user interface and its various tabs.
+"""
+import sys
 import json
 
-import sys
+import gradio as gr
+from mlcroissant import Dataset
+
 import ckan
 import de
 import migration
@@ -38,7 +42,7 @@ def handle_submit_migrate(username, password, de_link, convert_csv, title, descr
     metadata_status = check_metadata_availability(de_link, username, password)
     if metadata_status == "Error obtaining DE API key. Please check username and password.":
         return metadata_status, {}
-    elif metadata_status == "Error obtaining datasets from the Discovery Environment.":
+    if metadata_status == "Error obtaining datasets from the Discovery Environment.":
         return metadata_status, {}
 
     # Determine missing and empty fields
@@ -85,7 +89,7 @@ def handle_submit_croissant(username, password, de_link, title, description, aut
     metadata_status = check_metadata_availability(de_link, username, password)
     if metadata_status == "Error obtaining DE API key. Please check username and password.":
         return metadata_status, {}, None
-    elif metadata_status == "Error obtaining datasets from the Discovery Environment.":
+    if metadata_status == "Error obtaining datasets from the Discovery Environment.":
         return metadata_status, {}, None
 
     # Determine missing and empty fields
@@ -129,7 +133,7 @@ def handle_submit_dcat(username, password, de_link, title, description, author):
     metadata_status = check_metadata_availability(de_link, username, password)
     if metadata_status == "Error obtaining DE API key. Please check username and password.":
         return metadata_status, {}, None
-    elif metadata_status == "Error obtaining datasets from the Discovery Environment.":
+    if metadata_status == "Error obtaining datasets from the Discovery Environment.":
         return metadata_status, {}, None
 
     # Determine missing and empty fields
@@ -187,7 +191,7 @@ def handle_upload_croissant(username, password, croissant_file):
         if errors:
             return (f"Error validating Croissant JSON: Found the following {len(errors)} "
                     f"error(s) during the validation:\n") + "\n".join(errors)
-        elif warnings:
+        if warnings:
             return_message = "Croissant JSON Uploaded to CKAN with warnings:\n" + "\n".join(warnings)
     except Exception as e:
         return f"Error validating Croissant JSON: {str(e)}"

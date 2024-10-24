@@ -1,3 +1,7 @@
+"""
+Captures and stores logs from the application.
+"""
+
 import logging
 import io
 

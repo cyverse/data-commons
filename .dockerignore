@@ -1,0 +1,20 @@
+# Ignore Python cache and virtual environments
+__pycache__/
+.venv/
+
+# Ignore IDE and editor configuration files
+.idea/
+
+# Ignore local test directories and experimental folders
+CKAN_Testing/
+DE_API_Testing/
+
+# Ignore source directories not needed inside the Docker container
+croissant/
+croissant-editor/
+dcat/
+migration/
+docker/
+
+# Ignore .git folder to avoid copying version control metadata
+.git/

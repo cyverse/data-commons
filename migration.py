@@ -1,9 +1,13 @@
+"""
+Provides helper functions to clean and structure metadata for migration.
+"""
+
 import sys
-sys.path.insert(0, r'C:\Users\tdewa\KEYS2024 Project\data-commons\migration')
-import ckan
-import de
 import json
 import logging
+
+import ckan
+import de
 
 
 def clean_dataset_metadata(dataset_metadata: dict):
@@ -120,8 +124,8 @@ def get_author(dataset_metadata: dict):
         # If the author is a string, return the author. Otherwise, join the authors with a comma.
         if isinstance(dataset_metadata['datacite.creator'], str):
             return dataset_metadata['datacite.creator']
-        else:
-            return ', '.join(dataset_metadata['datacite.creator'])
+
+        return ', '.join(dataset_metadata['datacite.creator'])
 
     # If the dataset does not have a 'datacite.creator' key...
     except KeyError:
@@ -129,14 +133,14 @@ def get_author(dataset_metadata: dict):
         try:
             if isinstance(dataset_metadata['creator'], str):
                 return dataset_metadata['creator']
-            else:
-                return ', '.join(dataset_metadata['creator'])
+
+            return ', '.join(dataset_metadata['creator'])
         # If the dataset does not have a 'creator' key, return the 'Creator' key.
         except KeyError:
             if isinstance(dataset_metadata['Creator'], str):
                 return dataset_metadata['Creator']
-            else:
-                return ', '.join(dataset_metadata['Creator'])
+
+            return ', '.join(dataset_metadata['Creator'])
 
 
 def get_publication_year(dataset_metadata: dict):
@@ -156,8 +160,7 @@ def get_publication_year(dataset_metadata: dict):
             return dataset_metadata['datacite.publicationyear'][:4]
         # If the publication year is a list, return the first four characters
         # of the first element in the list since the second element is empty
-        else:
-            return dataset_metadata['datacite.publicationyear'][0][:4]
+        return dataset_metadata['datacite.publicationyear'][0][:4]
 
     # If the dataset does not have a 'datacite.publicationyear' key, use the 'publicationYear' key.
     except KeyError:
@@ -165,16 +168,14 @@ def get_publication_year(dataset_metadata: dict):
             # If the publication year is a string, return the publication year.
             if isinstance(dataset_metadata['publicationYear'], str):
                 return dataset_metadata['publicationYear']
-            else:
-                return dataset_metadata['publicationYear'][0][:4]
+            return dataset_metadata['publicationYear'][0][:4]
 
         # If the dataset does not have a 'publicationYear' key, use the 'PublicationYear' key.
         except KeyError:
             # If the publication year is a string, return the publication year.
             if isinstance(dataset_metadata['PublicationYear'], str):
                 return dataset_metadata['PublicationYear']
-            else:
-                return dataset_metadata['PublicationYear'][0][:4]
+            return dataset_metadata['PublicationYear'][0][:4]
 
 
 def get_description(dataset_metadata: dict):
@@ -524,7 +525,7 @@ def is_metadata_updated(de_dataset_metadata: dict, ckan_dataset_metadata: dict):
 
 def main():
     # Create a .txt script that will be used to log the output of the script
-    file = open("migration_log.txt", "w")
+    file = open("migration_log.txt", "w", encoding="utf-8")
 
     # Get the list of datasets in the discovery environment
     de_datasets = de.get_datasets()

@@ -1,3 +1,7 @@
+"""
+Creates DCAT-compliant JSON-LD files for datasets.
+"""
+
 import json
 import hashlib
 import datetime
@@ -129,7 +133,7 @@ if __name__ == '__main__':
                                      citation, date_published, license_url, version)
 
     # Save to file
-    with open("../migration/dcat.json", "w") as f:
+    with open("../migration/dcat.json", "w", encoding="utf-8") as f:
         json.dump(dcat_jsonld, f, indent=4)
 
     print("DCAT JSON-LD file created successfully.")

@@ -1,18 +1,39 @@
-import requests
+"""
+This module provides functions to interact with a CKAN instance.
+
+It includes functions to:
+- List organizations
+- Create datasets
+- Upload resources
+- Add resource links
+- Update dataset metadata
+- Retrieve dataset information
+- List datasets
+- Delete datasets
+- Delete all datasets in an organization
+- Pretty-print JSON data
+"""
+
 import json
+import requests
 
 # CKAN instance URL
-ckan_url = 'https://ckan.cyverse.rocks/'
+CKAN_URL = 'https://ckan.cyverse.rocks/'
 
 # API Key
-api_key = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJid0tfcVU5YUdlQkxScTNuWDRZbkdfRzctRk90bUdzeDh0ZzVwM19GUWJRIiwiaWF0IjoxNzE4MDg0NDcwfQ.f1Zp-LlzrhkqBvBh-bjm7hE0oOJiXKzRutFFjg6ykfo'
+API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJid0tfcVU5YUdlQkxScTNuWDRZbkdfRzctRk90bUdzeDh0ZzVwM19GUWJRIiwiaWF0IjoxNzE4MDg0NDcwfQ.f1Zp-LlzrhkqBvBh-bjm7hE0oOJiXKzRutFFjg6ykfo'
 
 
 def get_organizations():
+    """
+    Get a list of organizations in CKAN.
+    Returns:
+        dict: The response from the CKAN API, typically containing a list of organizations.
+    """
     url = 'https://ckan.cyverse.rocks/api/3/action/organization_list'
-    headers = {'Authorization': api_key}
+    headers = {'Authorization': API_KEY}
 
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=10)
     organizations = response.json()
 
     return organizations
@@ -33,12 +54,12 @@ def create_dataset(data):
     Returns:
         dict: The response from the CKAN API, typically containing the dataset metadata.
     """
-    url = f'{ckan_url}/api/3/action/package_create'  # API endpoint for creating a dataset
+    url = f'{CKAN_URL}/api/3/action/package_create'  # API endpoint for creating a dataset
     headers = {
-        'Authorization': api_key,  # API key for authorization
+        'Authorization': API_KEY,  # API key for authorization
         'Content-Type': 'application/json'  # Content type for the request
     }
-    response = requests.post(url, headers=headers, data=json.dumps(data))  # Send POST request to create dataset
+    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)  # Send POST request to create dataset
     return response.json()  # Return the JSON response from the API
 
 
@@ -60,9 +81,9 @@ def upload_resource(dataset_id, file_path, name, date_created, date_updated, des
     Returns:
         dict: The response from the CKAN API, typically containing the resource metadata.
     """
-    url = f'{ckan_url}/api/3/action/resource_create'  # API endpoint for creating a resource
+    url = f'{CKAN_URL}/api/3/action/resource_create'  # API endpoint for creating a resource
     headers = {
-        'Authorization': api_key  # API key for authorization
+        'Authorization': API_KEY  # API key for authorization
     }
     data = {
         'package_id': dataset_id,  # ID of the dataset to add the resource to
@@ -74,7 +95,7 @@ def upload_resource(dataset_id, file_path, name, date_created, date_updated, des
     files = {
         'upload': open(file_path, 'rb')  # File to upload
     }
-    response = requests.post(url, headers=headers, data=data, files=files)  # Send POST request to upload resource
+    response = requests.post(url, headers=headers, data=data, files=files, timeout=10)  # Send POST request to upload resource
     return response.json()  # Return the JSON response from the API
 
 
@@ -93,11 +114,11 @@ def add_resource_link(data):
     Returns:
         dict: The response from the CKAN API, typically containing the resource metadata.
     """
-    resource_url = f'{ckan_url}/api/3/action/resource_create'  # API endpoint for creating a resource
+    resource_url = f'{CKAN_URL}/api/3/action/resource_create'  # API endpoint for creating a resource
     headers = {
-        'Authorization': api_key  # API key for authorization
+        'Authorization': API_KEY  # API key for authorization
     }
-    response = requests.post(resource_url, headers=headers, json=data)  # Send POST request to add resource link
+    response = requests.post(resource_url, headers=headers, json=data, timeout=10)  # Send POST request to add resource link
     return response.json()  # Return the JSON response from the API
 
 
@@ -117,14 +138,14 @@ def update_dataset_metadata(dataset_id, new_metadata):
     Returns:
         dict: The response from the CKAN API, typically containing the updated dataset metadata.
     """
-    url = f'{ckan_url}/api/3/action/package_update'  # API endpoint for updating a dataset
+    url = f'{CKAN_URL}/api/3/action/package_update'  # API endpoint for updating a dataset
     headers = {
-        'Authorization': api_key,  # API key for authorization
+        'Authorization': API_KEY,  # API key for authorization
         'Content-Type': 'application/json'  # Content type for the request
     }
     data = new_metadata
     data['id'] = dataset_id  # Add the dataset ID to the data
-    response = requests.post(url, headers=headers, data=json.dumps(data))  # Send POST request to update dataset
+    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)  # Send POST request to update dataset
     return response.json()  # Return the JSON response from the API
 
 
@@ -143,23 +164,21 @@ def get_dataset_id(dataset_name):
     """
     # Format dataset name to match CKAN conventions
     dataset_name = dataset_name.lower().replace(' ', '-').replace('.', '-')
-    url = f'{ckan_url}/api/3/action/package_show'  # API endpoint for showing dataset details
-    headers = {'Authorization': api_key}  # API key for authorization
+    url = f'{CKAN_URL}/api/3/action/package_show'  # API endpoint for showing dataset details
+    headers = {'Authorization': API_KEY}  # API key for authorization
     params = {'id': dataset_name}  # Parameters for the GET request
-    response = requests.get(url, headers=headers, params=params)  # Send GET request to retrieve dataset details
+    response = requests.get(url, headers=headers, params=params, timeout=10)  # Send GET request to retrieve dataset details
     if response.status_code == 200:
         dataset_metadata = response.json()  # Parse the JSON response
         if dataset_metadata['success']:
             return dataset_metadata['result']['id']  # Return dataset ID if found
-        else:
-            print(f"Error: {dataset_metadata['error']['message']}")  # Print error message if not successful
-            return None
-    elif response.status_code == 404:
+        print(f"Error: {dataset_metadata['error']['message']}")  # Print error message if not successful
+        return None
+    if response.status_code == 404:
         print(f"Dataset '{dataset_name}' not found.")  # Print message if dataset not found
         return None
-    else:
-        print(f"An error occurred: {response.status_code} - {response.text}")  # Print error message for other errors
-        return None
+    print(f"An error occurred: {response.status_code} - {response.text}")  # Print error message for other errors
+    return None
 
 
 def get_dataset_info(dataset_id):
@@ -175,10 +194,10 @@ def get_dataset_info(dataset_id):
     Returns:
         dict: The response from the CKAN API, containing the dataset metadata.
     """
-    url = f'{ckan_url}/api/3/action/package_show'  # API endpoint for showing dataset details
-    headers = {'Authorization': api_key}  # API key for authorization
+    url = f'{CKAN_URL}/api/3/action/package_show'  # API endpoint for showing dataset details
+    headers = {'Authorization': API_KEY}  # API key for authorization
     params = {'id': dataset_id}  # Parameters for the GET request
-    response = requests.get(url, headers=headers, params=params)  # Send GET request to retrieve dataset details
+    response = requests.get(url, headers=headers, params=params, timeout=10)  # Send GET request to retrieve dataset details
     return response.json()  # Return the JSON response from the API
 
 
@@ -198,7 +217,7 @@ def list_datasets(organization=None, group=None):
     Returns:
         list: A list of dictionaries, each containing the metadata of a dataset.
     """
-    headers = {'Authorization': api_key}  # API key for authorization
+    headers = {'Authorization': API_KEY}  # API key for authorization
     output = []
     limit = 100  # Number of datasets to retrieve per request
     offset = 0  # Offset for pagination
@@ -215,7 +234,7 @@ def list_datasets(organization=None, group=None):
         if group:
             params['q'] = f'groups:{group}'
 
-        response = requests.get(f'{ckan_url}/api/3/action/package_search', headers=headers, params=params)
+        response = requests.get(f'{CKAN_URL}/api/3/action/package_search', headers=headers, params=params, timeout=10)
         response_json = response.json()
 
         if 'result' not in response_json or 'results' not in response_json['result']:
@@ -246,16 +265,16 @@ def delete_dataset(dataset_id):
     Returns:
         dict: The response from the CKAN API.
     """
-    url = f'{ckan_url}/api/3/action/package_delete'  # API endpoint for deleting a dataset
+    url = f'{CKAN_URL}/api/3/action/package_delete'  # API endpoint for deleting a dataset
     headers = {
-        'Authorization': api_key,  # API key for authorization
+        'Authorization': API_KEY,  # API key for authorization
         'Content-Type': 'application/json'  # Content type for the request
     }
     data = {
         'id': dataset_id  # ID of the dataset to delete
     }
     # Send POST request to delete dataset
-    response = requests.post(url, headers=headers, data=json.dumps(data))
+    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
     return response.json()  # Return the JSON response from the API
 
 

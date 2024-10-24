@@ -4,15 +4,15 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the entire project directory into the container at /app
-COPY . /app
+# Copy only Python files into /app to reduce image size.
+COPY *.py /app/
 
-# Install any needed packages specified in requirements.txt
-# Assuming requirements.txt is in the root of the project
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Install dependencies from the requirements.txt mounted at build time
+RUN --mount=type=bind,source=requirements.txt,target=/requirements.txt \
+    pip install --no-cache-dir --default-timeout=100 -r /requirements.txt
 
 # Expose the port your Gradio app will run on
 EXPOSE 7860
 
 # Run the application
-CMD ["python", "/app/gradio/gradio_main.py"]
+CMD ["python", "/app/gradio_main.py"]
