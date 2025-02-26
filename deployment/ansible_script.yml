@@ -1,0 +1,106 @@
+
+---
+ - name: Install and Configure CKAN on Ubuntu 22.04 in WSL
+   hosts: localhost
+   become: yes
+   tasks:
+ 
+     - name: Update system packages
+       apt:
+         update_cache: yes
+ 
+     - name: Install required dependencies
+       apt:
+         name:
+           - python3-pip
+           - libpq5
+           - redis-server
+           - nginx
+           - supervisor
+           - postgresql
+           - openjdk-11-jdk
+           - unzip
+           - wget
+         state: present
+ 
+     - name: Start PostgreSQL manually for WSL
+       command: service postgresql start
+       args:
+         warn: false
+       ignore_errors: yes
+ 
+     - name: Create CKAN database user
+       shell: |
+         sudo -u postgres psql -c "CREATE ROLE ckan_default WITH LOGIN PASSWORD 'yourpassword' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+       ignore_errors: yes
+ 
+     - name: Create CKAN database
+       shell: sudo -u postgres createdb -O ckan_default ckan_default -E utf-8
+       ignore_errors: yes
+ 
+     - name: Set up Datastore user
+       shell: |
+         sudo -u postgres psql -c "CREATE ROLE datastore_default WITH LOGIN PASSWORD 'yourpassword' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+         sudo -u postgres psql -c "GRANT CONNECT ON DATABASE ckan_default TO datastore_default;"
+       ignore_errors: yes
+ 
+     - name: Fix permissions for CKAN directories
+       file:
+         path: /var/lib/ckan/default
+         state: directory
+         owner: www-data
+         group: www-data
+         mode: 0775
+ 
+     - name: Download CKAN package
+       get_url:
+         url: https://packaging.ckan.org/python-ckan_2.10-jammy_amd64.deb
+         dest: /tmp/python-ckan_2.10-jammy_amd64.deb
+ 
+     - name: Install CKAN package
+       command: dpkg -i /tmp/python-ckan_2.10-jammy_amd64.deb
+       ignore_errors: yes
+ 
+     - name: Fix missing dependencies
+       command: apt-get install --fix-broken -y
+ 
+     - name: Fix permissions for webassets
+       file:
+         path: /var/lib/ckan/default/webassets
+         state: directory
+         owner: www-data
+         group: www-data
+         mode: 0775
+ 
+     - name: Ensure CKAN configuration file is in place
+       copy:
+         src: /etc/ckan/default/ckan.ini
+         dest: /etc/ckan/default/ckan.ini
+         owner: www-data
+         group: www-data
+         mode: 0644
+         remote_src: yes
+ 
+ 
+     - name: Download and Install Solr manually
+       shell: |
+         wget -O /tmp/solr.tgz https://dlcdn.apache.org/solr/solr/9.8.0/solr-9.8.0.tgz
+         tar xzf /tmp/solr.tgz -C /opt/
+       args:
+         creates: /opt/solr-9.8.0
+ 
+     - name: Ensure Solr service is running manually
+       shell: |
+         nohup /opt/solr-9.8.0/bin/solr start &
+       ignore_errors: yes
+ 
+     - name: Create Solr core for CKAN
+       command: /opt/solr-9.8.0/bin/solr create -c ckan
+       ignore_errors: yes
+ 
+     - name: Restart CKAN manually for WSL
+       shell: nohup /usr/lib/ckan/default/bin/ckan -c /etc/ckan/default/ckan.ini run > /dev/null 2>&1 &
+       args:
+         executable: /bin/bash
+       ignore_errors: yes
+  
