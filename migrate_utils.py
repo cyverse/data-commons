@@ -94,20 +94,23 @@ def migrate_dataset_to_ckan(username, password, de_link, title, description, aut
 
     # Add conversion of CSV to Parquet if requested
     if convert_csv:
-        files = fu.convert_csv_to_parquet(files)
+        parquet_files = fu.convert_csv_to_parquet(files)
 
-    for file in files['files']:
-        file_metadata = de.get_all_metadata_file(file)
-        resource_data = {
-            'package_id': dataset_id,
-            'name': file_metadata['file_name'],
-            'description': None,
-            'url': file_metadata['web_dav_location'],
-            'format': file_metadata['file_type'],
-            'Date created in discovery environment': file_metadata['date_created'],
-            'Date last modified in discovery environment': file_metadata['date_modified']
-        }
-        ckan.add_resource_link(resource_data)
+        for file in parquet_files:
+            ckan.upload_resource(dataset_id, file['file_path'], file['file_name'], file['date_created'], file['date_modified'])
+    else:
+        for file in files['files']:
+            file_metadata = de.get_all_metadata_file(file)
+            resource_data = {
+                'package_id': dataset_id,
+                'name': file_metadata['file_name'],
+                'description': None,
+                'url': file_metadata['web_dav_location'],
+                'format': file_metadata['file_type'],
+                'Date created in discovery environment': file_metadata['date_created'],
+                'Date last modified in discovery environment': file_metadata['date_modified']
+            }
+            ckan.add_resource_link(resource_data)
 
     for folder in files['folders']:
         folder_metadata = de.get_all_metadata_file(folder)

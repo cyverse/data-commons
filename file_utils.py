@@ -232,14 +232,18 @@ def convert_csv_to_parquet(files):
     parquet_files = []
 
     for file in files['files']:
-        if file['file_type'] == 'csv':
-            csv_url = file['web_dav_location']
+        file_metadata = de.get_all_metadata_file(file)
+
+        if file_metadata['file_type'] == 'csv':
+            csv_url = file_metadata['web_dav_location']
             response = requests.get(csv_url, timeout=10)
             csv_data = pd.read_csv(BytesIO(response.content))
-            parquet_filename = file['file_name'].replace('.csv', '.parquet')
+            parquet_filename = file_metadata['file_name'].replace('.csv', '.parquet')
             parquet_filepath = os.path.join(gettempdir(), parquet_filename)
             csv_data.to_parquet(parquet_filepath)
-            file['web_dav_location'] = parquet_filepath
-            file['file_type'] = 'parquet'
-            parquet_files.append(file)
+            file_metadata['file_path'] = parquet_filepath
+            file_metadata['file_type'] = 'parquet'
+            parquet_files.append(file_metadata)
+
+    de.pretty_print(parquet_files)
     return parquet_files
