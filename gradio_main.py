@@ -17,6 +17,11 @@ from check_metadata_availability import check_metadata_availability
 from validate_dcat_json import validate_dcat_json
 import migrate_utils
 
+from aws.aws_main import get_s3_client, replicate_aws_bucket_to_ckan
+from gcs.gcs_main import replicate_gcs_bucket_to_ckan
+
+import boto3
+
 
 def handle_submit_migrate(username, password, de_link, convert_csv, title, description, author):
     """
@@ -307,6 +312,23 @@ def handle_upload_dcat(username, password, dcat_file):
     return "DCAT JSON uploaded to CKAN successfully."
 
 
+# callback functions for AWS and GCS replication
+def handle_aws(bucket_name, aws_access_key, aws_secret_key, region="us-east-1"):
+    if not (bucket_name and aws_access_key and aws_secret_key):
+        return "Bucket name, AWS Access Key ID, and Secret Access Key are required."
+    s3_client = get_s3_client(aws_access_key, aws_secret_key, region)
+    return replicate_aws_bucket_to_ckan(bucket_name, s3_client)
+
+def handle_gcs(bucket_name, credentials_file):
+    if not bucket_name:
+        return "GCS bucket name is required."
+    if credentials_file is None:
+        return "Please upload your gcs-credentials.json file."
+    # credentials_file.name is the temp path to the uploaded file
+    from google.cloud import storage
+    gcs_client = storage.Client.from_service_account_json(credentials_file.name)
+    return replicate_gcs_bucket_to_ckan(bucket_name, gcs_client)
+
 # Gradio interface layout
 def migrate_interface():
     """
@@ -454,12 +476,51 @@ def upload_dcat_interface():
     return upload_dcat_block
 
 
+
+# interface functions for AWS and GCS replication
+def aws_interface():
+    with gr.Blocks() as aws_block:
+        gr.Markdown("## Replicate AWS S3 Bucket to CKAN")
+        aws_key = gr.Textbox(label="AWS Access Key ID")
+        aws_secret = gr.Textbox(label="AWS Secret Access Key", type="password")
+        aws_region = gr.Textbox(label="AWS Region", value="us-east-1")
+        aws_bucket = gr.Textbox(label="Bucket Name")
+        btn = gr.Button("Replicate AWS Bucket")
+        out = gr.Textbox(label="Output", lines=10)
+
+        btn.click(
+            fn=handle_aws,
+            inputs=[aws_bucket, aws_key, aws_secret, aws_region],
+            outputs=out
+        )
+    return aws_block
+
+
+
+def gcs_interface():
+    with gr.Blocks() as gcs_block:
+        gr.Markdown("## Replicate GCS Bucket to CKAN")
+        credentials = gr.File(label="Upload gcs-credentials.json")
+        gcs_bucket = gr.Textbox(label="Bucket Name")
+        btn = gr.Button("Replicate GCS Bucket")
+        out = gr.Textbox(label="Output", lines=10)
+
+        btn.click(
+            fn=handle_gcs,
+            inputs=[gcs_bucket, credentials],
+            outputs=out
+        )
+    return gcs_block
+
+
+
 # Create the Gradio interface with all tabs
 iface = gr.TabbedInterface(
     [migrate_interface(), croissant_interface(), dcat_interface(), upload_croissant_interface(),
-     upload_dcat_interface()],
-    ["Migrate to CKAN", "Generate Croissant JSON", "Generate DCAT JSON", "Upload Croissant JSON to CKAN",
-     "Upload DCAT JSON to CKAN"],
+     upload_dcat_interface(), aws_interface(), gcs_interface()],
+    ["Migrate to CKAN", "Generate Croissant JSON", "Generate DCAT JSON",
+     "Upload Croissant JSON to CKAN", "Upload DCAT JSON to CKAN",
+     "Replicate AWS Bucket", "Replicate GCS Bucket"],
     theme=gr.themes.Monochrome()
 )
 

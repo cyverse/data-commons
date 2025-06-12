@@ -20,9 +20,8 @@ import requests
 # CKAN instance URL
 CKAN_URL = 'https://ckan.cyverse.rocks/'
 
-# API Key
+# API Key for ckan.cyverse.org
 API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJid0tfcVU5YUdlQkxScTNuWDRZbkdfRzctRk90bUdzeDh0ZzVwM19GUWJRIiwiaWF0IjoxNzE4MDg0NDcwfQ.f1Zp-LlzrhkqBvBh-bjm7hE0oOJiXKzRutFFjg6ykfo'
-
 
 def get_organizations():
     """
@@ -313,3 +312,4 @@ def pretty_print(json_data):
         json_data (dict): JSON data to be pretty-printed.
     """
     print(json.dumps(json_data, indent=4, sort_keys=True))
+

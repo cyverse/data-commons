@@ -45,14 +45,14 @@ In the gcs_to_ckan.py script:
 1. Set the bucket name:
 
    ```python
-   bucket_name = "your-bucket-name"
+   bucket_name = "YOUR_GCS_BUCKET_NAME"
    ```
 
 2. Use your service account JSON for authentication:
    Make sure the file (ex. gcs-credentials.json) is in your working directory, and replace the default client call with:
 
    ```python
-   client = storage.Client.from_service_account_json('gcs-credentials.json')
+   gcs_client = storage.Client.from_service_account_json("YOUR_CREDENTIALS_JSON_PATH")
    ```
 
 ---

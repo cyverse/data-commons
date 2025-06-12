@@ -24,25 +24,32 @@ Your environment must have:
 Make sure your your bucket is public and owned by your user.
 
 1. Set a public bucket policy:
-Go to the S3 console > your bucket > Permissions > Bucket Policy and paste this:
+Go to the S3 console > your bucket > Permissions > Bucket Policy and paste this. Make sure to replace your bucket name.
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "PublicRead",
+      "Sid": "BucketListPermissions",
       "Effect": "Allow",
       "Principal": "*",
       "Action": [
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:GetBucketLocation"
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
       ],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME"
+    },
+    {
+      "Sid": "PublicReadObjects",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
       "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
     }
   ]
 }
+
 ```
 
 2. Disable “Block Public Access”:
@@ -60,10 +67,12 @@ https://YOUR_BUCKET_NAME.s3.amazonaws.com/EXAMPLE.txt
 
 ### **Step 3: Update Your Script Settings**
 
-In `main.py`, update the following line with your bucket name:
+In `main.py`, update the following lines with your bucket name and AWS credentials:
 ```python
-bucket_name = "your-bucket-name"
+bucket_name = "YOUR_BUCKET_NAME"
+s3_client = get_s3_client("YOUR_ACCESS_KEY", "YOUR_SECRET_KEY")
 ```
+
 
 ---
 
@@ -80,7 +89,6 @@ What this program does :
 - Generate public URLs to each file
 - Create a new dataset in CKAN using your bucket metadata
 - Add each object as a resource (using its public S3 URL)
-- Save the metadata to a local JSON file (`s3_metadata.json`)
 
 ---
 
