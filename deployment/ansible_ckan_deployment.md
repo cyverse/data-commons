@@ -1,8 +1,8 @@
-# **Step-by-Step Guide Automating CKAN Setup Using Ansible**
+# Step-by-Step Guide Automating CKAN Setup Using Ansible
 
 ---
 
-## **Step 1: Set Up Linux VM**
+## Step 1: Set Up Linux VM
 
 1. Update Ubuntu:
 
@@ -10,7 +10,7 @@
    sudo apt update && sudo apt upgrade -y
    ```
 
-2. Install required dependencies:
+1. Install required dependencies:
 
    ```bash
    sudo apt install -y ansible python3-pip git
@@ -18,7 +18,7 @@
 
 ---
 
-## **Step 2: Set Up Ansible**
+## Step 2: Set Up Ansible
 
   Create an Ansible directory:
 
@@ -29,7 +29,7 @@
 
 ---
 
-## **Step 3: Define Inventory and Variables**
+## Step 3: Define Inventory and Variables
 
 ### 3.1 Create Inventory File
 
@@ -97,7 +97,7 @@ vault_datastore_password: "your_datastore_password"
 
 ---
 
-## **Step 4: Create the Ansible Playbook**
+## Step 4: Create the Ansible Playbook
 
 1. Create a new playbook file:
 
@@ -105,7 +105,7 @@ vault_datastore_password: "your_datastore_password"
    nano ckan_setup.yml
    ```
 
-2. Paste the following playbook inside the file and save:  
+2. Paste the following playbook inside the file and save:
 
    ```yaml
 
@@ -115,12 +115,12 @@ vault_datastore_password: "your_datastore_password"
      become: yes
      vars_files:
        - group_vars/vault.yml
-   
+
      tasks:
        - name: Update system packages
          apt:
            update_cache: yes
-   
+
        - name: Install required dependencies
          apt:
            name:
@@ -134,26 +134,31 @@ vault_datastore_password: "your_datastore_password"
              - unzip
              - wget
            state: present
-   
+
        - name: Start PostgreSQL (WSL / Remote)
          command: service postgresql start
          ignore_errors: yes
-   
+
        - name: Create CKAN database user
          shell: |
-           sudo -u postgres psql -c "CREATE ROLE {{ ckan_db_user }} WITH LOGIN PASSWORD '{{ ckan_db_password }}' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+           sudo --user=postgres \
+             psql \
+               --command="CREATE ROLE {{ ckan_db_user }} WITH LOGIN PASSWORD '{{ ckan_db_password }}' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
          ignore_errors: yes
-   
+
        - name: Create CKAN database
          shell: sudo -u postgres createdb -O {{ ckan_db_user }} {{ ckan_db_name }} -E utf-8
          ignore_errors: yes
-   
+
        - name: Create datastore user
          shell: |
-           sudo -u postgres psql -c "CREATE ROLE {{ datastore_user }} WITH LOGIN PASSWORD '{{ datastore_password }}' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
-           sudo -u postgres psql -c "GRANT CONNECT ON DATABASE {{ ckan_db_name }} TO {{ datastore_user }};"
+           sudo --user=postgres \
+             psql \
+               --command="CREATE ROLE {{ datastore_user }} WITH LOGIN PASSWORD '{{ datastore_password }}' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+           sudo --user=postgres \
+             psql --command="GRANT CONNECT ON DATABASE {{ ckan_db_name }} TO {{ datastore_user }};"
          ignore_errors: yes
-   
+
        - name: Set permissions for CKAN directories
          file:
            path: /var/lib/ckan/default
@@ -161,19 +166,19 @@ vault_datastore_password: "your_datastore_password"
            owner: www-data
            group: www-data
            mode: 0775
-   
+
        - name: Download CKAN package
          get_url:
            url: "https://packaging.ckan.org/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
            dest: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
-   
+
        - name: Install CKAN package
          command: dpkg -i /tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb
          ignore_errors: yes
-   
+
        - name: Fix missing dependencies
          command: apt-get install --fix-broken -y
-   
+
        - name: Fix permissions for webassets
          file:
            path: /var/lib/ckan/default/webassets
@@ -181,7 +186,7 @@ vault_datastore_password: "your_datastore_password"
            owner: www-data
            group: www-data
            mode: 0775
-   
+
        - name: Ensure CKAN configuration file is in place
          copy:
            src: /etc/ckan/default/ckan.ini
@@ -190,22 +195,23 @@ vault_datastore_password: "your_datastore_password"
            group: www-data
            mode: 0644
            remote_src: yes
-   
+
        - name: Download and install Solr
          shell: |
-           wget -O /tmp/solr.tgz https://dlcdn.apache.org/solr/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
+           wget \
+             --output-document=/tmp/solr.tgz https://dlcdn.apache.org/solr/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
            tar xzf /tmp/solr.tgz -C /opt/
          args:
            creates: "/opt/solr-{{ solr_version }}"
-   
+
        - name: Start Solr
          shell: nohup /opt/solr-{{ solr_version }}/bin/solr start &
          ignore_errors: yes
-   
+
        - name: Create Solr core for CKAN
          command: /opt/solr-{{ solr_version }}/bin/solr create -c ckan
          ignore_errors: yes
-   
+
        - name: Start CKAN
          shell: nohup /usr/lib/ckan/default/bin/ckan -c /etc/ckan/default/ckan.ini run > /dev/null 2>&1 &
          args:
@@ -215,7 +221,7 @@ vault_datastore_password: "your_datastore_password"
 
 ---
 
-## **Step 5: Create CKAN Configuration File**
+## Step 5: Create CKAN Configuration File
 
 1. Create the CKAN configuration file:
 
@@ -237,7 +243,7 @@ vault_datastore_password: "your_datastore_password"
 
 ---
 
-## **Step 6: Run the Ansible Playbook**
+## Step 6: Run the Ansible Playbook
 
 1. Navigate to your playbook directory:
 
@@ -253,7 +259,7 @@ vault_datastore_password: "your_datastore_password"
 
 ---
 
-## **Step 7: Verify CKAN is running**
+## Step 7: Verify CKAN is running
 
   Verify CKAN is running:
 
@@ -263,4 +269,3 @@ vault_datastore_password: "your_datastore_password"
 
   Open CKAN in Browser:
   <http://localhost:5000>
-  
