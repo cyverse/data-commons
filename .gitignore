@@ -1,6 +1,7 @@
-__pycache__
+*/__pycache__
+*/.venv
 .idea
-.venv
+.vscode
 CKAN_Testing
 croissant
 croissant-editor
