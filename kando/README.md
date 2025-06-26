@@ -95,7 +95,19 @@ You have **two ways to launch the app**:
 
 ### Main Components
 
-#### 1. `gradio_main.py`
+### Docker Configuration
+
+#### 1. Dockerfile
+
+- **Purpose**: Defines the **Docker configuration** for the project.
+- **Details**:
+  - Uses **Python 3.11 slim** as the base image.
+  - **Copies only the `.py` files** to the container for a smaller image size.
+  - Installs dependencies from `requirements.txt` and **exposes port 7860** for the Gradio UI.
+
+---
+
+#### 2. `gradio_main.py`
 
 - **Purpose**: Defines the **Gradio-based user interface** and its various tabs.
 - **Features**:
