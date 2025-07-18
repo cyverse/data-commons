@@ -1,0 +1,6 @@
+[app:main]
+sqlalchemy.url = postgresql://{{ ckan_db_user }}:{{ ckan_db_password }}@localhost/{{ ckan_db_name }}
+ckan.site_url = http://localhost:5000
+solr_url = http://127.0.0.1:8983/solr/ckan
+ckan.plugins = stats text_view recline_view
+ckan.site_id = default
