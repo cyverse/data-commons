@@ -130,7 +130,7 @@ vault_datastore_password: "your_datastore_password"
 1. Run the playbook:
 
    ```bash
-   ansible-playbook -K -i inventory.ini ckan_local_setup.yml --ask-vault-pass
+   ansible-playbook -i inventory.ini ansible_script.yml --ask-vault-pass
    ```
 
 ---
