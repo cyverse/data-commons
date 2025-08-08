@@ -72,13 +72,12 @@
         mode: 0775
 
     - name: Ensure CKAN configuration file is in place
-      copy:
-        src: /etc/ckan/default/ckan.ini
+      template:
+        src: ckan.ini.j2
         dest: /etc/ckan/default/ckan.ini
         owner: www-data
         group: www-data
         mode: 0644
-        remote_src: yes
 
     - name: Download and install Solr
       shell: |
