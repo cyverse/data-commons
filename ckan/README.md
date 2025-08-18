@@ -14,3 +14,6 @@
 - **Details**:
   - Describes prerequisites (Ansible installation, target machine setup).
   - Explains how to run the playbook and verify the deployed CKAN instance.
+
+
+community.postgresql

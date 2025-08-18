@@ -1,32 +1,48 @@
 ---
 - name: Install and Configure CKAN on Ubuntu 22.04
   hosts: ckan_servers
-  become: yes
+  become: true
   vars_files:
     - group_vars/vault.yml
 
   tasks:
     - name: Update system packages
-      apt:
+      ansible.builtin.apt:
         update_cache: yes
 
     - name: Install required dependencies
-      apt:
+      ansible.builtin.package:
         name:
-          - python3-pip
           - libpq5
-          - redis-server
           - nginx
-          - supervisor
           - postgresql
-          - openjdk-11-jdk
-          - unzip
-          - wget
+          - redis-server
+          - supervisor
+          - xz-utils
         state: present
 
-    - name: Start PostgreSQL (WSL / Remote)
-      command: service postgresql start
-      ignore_errors: yes
+    # - name: Install required dependencies
+    #   apt:
+    #     name:
+    #       - nginx
+    #       - openjdk-11-jdk
+    #       - postgresql
+    #       - python3-pip
+    #       - redis-server
+    #       - supervisor
+    #       - unzip
+    #       - wget
+    #     state: present
+
+    - name: Install CKAN
+      ansible.builtin.apt:
+        deb: https://packaging.ckan.org/python-ckan_2.11-jammy_amd64.deb
+
+    - name: Start PostgreSQL
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+        enabled: true
 
     - name: Create CKAN database user
       shell: |
@@ -80,11 +96,11 @@
         mode: 0644
 
     - name: Download and install Solr
-      shell: |
-        wget -O /tmp/solr.tgz https://dlcdn.apache.org/solr/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
-        tar xzf /tmp/solr.tgz -C /opt/
-      args:
-        creates: "/opt/solr-{{ solr_version }}"
+      ansible.builtin.unarchive:
+        src: https://archive.apache.org/dist/solr/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
+        dest: /opt
+        creates: /opt/solr-{{ solr_version }}
+        remote_src: true
 
     - name: Start Solr
       shell: nohup /opt/solr-{{ solr_version }}/bin/solr start &
