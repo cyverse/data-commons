@@ -50,10 +50,10 @@
         owner: root
         group: root
 
-    - name: Source Java environment for current session
-      ansible.builtin.shell: source /etc/profile.d/java.sh
-      args:
-        executable: /bin/bash
+    # - name: Source Java environment for current session
+    #   ansible.builtin.shell: source /etc/profile.d/java.sh
+    #   args:
+    #     executable: /bin/bash
 
     - name: Verify Java installation
       ansible.builtin.command: /usr/lib/jvm/java-11-openjdk-amd64/bin/java -version
@@ -70,57 +70,11 @@
         state: started
         enabled: true
 
-    # - name: Start and enable Redis
-    #   ansible.builtin.systemd:
-    #     name: redis-server
-    #     state: started
-    #     enabled: true
-
-    - name: Create CKAN database user
-      become_user: postgres
-      postgresql_user:
-        name: "{{ ckan_db_user }}"
-        password: "{{ ckan_db_password }}"
-        role_attr_flags: NOSUPERUSER,NOCREATEDB,NOCREATEROLE
-        state: present
-
-    - name: Create CKAN database
-      become: yes
-      become_user: postgres
-      community.postgresql.postgresql_db:
-        name: "{{ ckan_db_name }}"
-        owner: "{{ ckan_db_user }}"
-        encoding: "UTF-8"
-        template: "template0"
-        state: present
-
-    - name: Download CKAN package
-      ansible.builtin.get_url:
-        url: "https://packaging.ckan.org/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
-        dest: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
-        mode: '0644'
-
-    - name: Install CKAN package
-      ansible.builtin.apt:
-        deb: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
-        state: present
-
-    - name: Create CKAN directories
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
-        recurse: yes
-      loop:
-        - /var/lib/ckan
-        - /var/lib/ckan/default
-        - /var/lib/ckan/default/storage
-        - /var/lib/ckan/default/webassets
-        - /etc/ckan
-        - /etc/ckan/default
-        - /var/log/ckan
+    - name: Start and enable Redis
+      ansible.builtin.systemd:
+        name: redis-server
+        state: started
+        enabled: true
 
     - name: Check if Solr service files exist
       ansible.builtin.stat:
@@ -256,6 +210,52 @@
       ansible.builtin.set_fact:
         ckan_session_secret: "{{ session_secret.stdout }}"
       when: session_secret.stdout is defined
+
+    - name: Create CKAN database user
+      become_user: postgres
+      postgresql_user:
+        name: "{{ ckan_db_user }}"
+        password: "{{ ckan_db_password }}"
+        role_attr_flags: NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+        state: present
+
+    - name: Create CKAN database
+      become: yes
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ ckan_db_name }}"
+        owner: "{{ ckan_db_user }}"
+        encoding: "UTF-8"
+        template: "template0"
+        state: present
+
+    - name: Download CKAN package
+      ansible.builtin.get_url:
+        url: "https://packaging.ckan.org/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
+        dest: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
+        mode: '0644'
+
+    - name: Install CKAN package
+      ansible.builtin.apt:
+        deb: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
+        state: present
+
+    - name: Create CKAN directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+        recurse: yes
+      loop:
+        - /var/lib/ckan
+        - /var/lib/ckan/default
+        - /var/lib/ckan/default/storage
+        - /var/lib/ckan/default/webassets
+        - /etc/ckan
+        - /etc/ckan/default
+        - /var/log/ckan
 
     - name: Create CKAN configuration file
       ansible.builtin.copy:
