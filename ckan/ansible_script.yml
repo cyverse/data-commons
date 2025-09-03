@@ -1,101 +1,456 @@
 ---
 - name: Install and Configure CKAN on Ubuntu 22.04
   hosts: ckan_servers
-  become: yes
+  become: true
   vars_files:
     - group_vars/vault.yml
-
+  
+  vars:
+    ckan_version: "2.11"
+    solr_version: "9.5.0"
+    ckan_site_url: "http://{{ ansible_default_ipv4.address | default('localhost') }}:5000"
+    ckan_storage_path: "/var/lib/ckan/default/storage"
+    
   tasks:
     - name: Update system packages
-      apt:
+      ansible.builtin.apt:
         update_cache: yes
+        cache_valid_time: 3600
 
     - name: Install required dependencies
-      apt:
+      ansible.builtin.apt:
         name:
-          - python3-pip
           - libpq5
-          - redis-server
           - nginx
-          - supervisor
           - postgresql
+          - postgresql-contrib
+          - redis-server
+          - supervisor
+          - xz-utils
+          - python3-pip
+          - python3-venv
+          - python3-dev
+          - libpq-dev
+          - git
           - openjdk-11-jdk
-          - unzip
           - wget
+          - curl
+          - lsof
+          - python3-psycopg2
         state: present
 
-    - name: Start PostgreSQL (WSL / Remote)
-      command: service postgresql start
-      ignore_errors: yes
+    - name: Create Java environment script
+      ansible.builtin.copy:
+        content: |
+          #!/bin/bash
+          export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+        dest: /etc/profile.d/java.sh
+        mode: '0755'
+        owner: root
+        group: root
 
-    - name: Create CKAN database user
-      shell: |
-        sudo -u postgres psql -c "CREATE ROLE {{ ckan_db_user }} WITH LOGIN PASSWORD '{{ ckan_db_password }}' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
-      ignore_errors: yes
-
-    - name: Create CKAN database
-      shell: sudo -u postgres createdb -O {{ ckan_db_user }} {{ ckan_db_name }} -E utf-8
-      ignore_errors: yes
-
-    - name: Create datastore user
-      shell: |
-        sudo -u postgres psql -c "CREATE ROLE {{ datastore_user }} WITH LOGIN PASSWORD '{{ datastore_password }}' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
-        sudo -u postgres psql -c "GRANT CONNECT ON DATABASE {{ ckan_db_name }} TO {{ datastore_user }};"
-      ignore_errors: yes
-
-    - name: Set permissions for CKAN directories
-      file:
-        path: /var/lib/ckan/default
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: 0775
-
-    - name: Download CKAN package
-      get_url:
-        url: "https://packaging.ckan.org/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
-        dest: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
-
-    - name: Install CKAN package
-      command: dpkg -i /tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb
-      ignore_errors: yes
-
-    - name: Fix missing dependencies
-      command: apt-get install --fix-broken -y
-
-    - name: Fix permissions for webassets
-      file:
-        path: /var/lib/ckan/default/webassets
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: 0775
-
-    - name: Ensure CKAN configuration file is in place
-      template:
-        src: ckan.ini.j2
-        dest: /etc/ckan/default/ckan.ini
-        owner: www-data
-        group: www-data
-        mode: 0644
-
-    - name: Download and install Solr
-      shell: |
-        wget -O /tmp/solr.tgz https://dlcdn.apache.org/solr/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz
-        tar xzf /tmp/solr.tgz -C /opt/
-      args:
-        creates: "/opt/solr-{{ solr_version }}"
-
-    - name: Start Solr
-      shell: nohup /opt/solr-{{ solr_version }}/bin/solr start &
-      ignore_errors: yes
-
-    - name: Create Solr core for CKAN
-      command: /opt/solr-{{ solr_version }}/bin/solr create -c ckan
-      ignore_errors: yes
-
-    - name: Start CKAN
-      shell: nohup /usr/lib/ckan/default/bin/ckan -c /etc/ckan/default/ckan.ini run > /dev/null 2>&1 &
+    - name: Source Java environment for current session
+      ansible.builtin.shell: source /etc/profile.d/java.sh
       args:
         executable: /bin/bash
+
+    - name: Verify Java installation
+      ansible.builtin.command: /usr/lib/jvm/java-11-openjdk-amd64/bin/java -version
+      register: java_version
+      failed_when: java_version.rc != 0
+
+    - name: Display Java version
+      ansible.builtin.debug:
+        msg: "Java version: {{ java_version.stderr_lines[0] }}"
+
+    - name: Start and enable PostgreSQL
+      ansible.builtin.systemd:
+        name: postgresql
+        state: started
+        enabled: true
+
+    # - name: Start and enable Redis
+    #   ansible.builtin.systemd:
+    #     name: redis-server
+    #     state: started
+    #     enabled: true
+
+    - name: Create CKAN database user
+      become_user: postgres
+      postgresql_user:
+        name: "{{ ckan_db_user }}"
+        password: "{{ ckan_db_password }}"
+        role_attr_flags: NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+        state: present
+
+    - name: Create CKAN database
+      become: yes
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ ckan_db_name }}"
+        owner: "{{ ckan_db_user }}"
+        encoding: "UTF-8"
+        template: "template0"
+        state: present
+
+    - name: Download CKAN package
+      ansible.builtin.get_url:
+        url: "https://packaging.ckan.org/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
+        dest: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
+        mode: '0644'
+
+    - name: Install CKAN package
+      ansible.builtin.apt:
+        deb: "/tmp/python-ckan_{{ ckan_version }}-jammy_amd64.deb"
+        state: present
+
+    - name: Create CKAN directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+        recurse: yes
+      loop:
+        - /var/lib/ckan
+        - /var/lib/ckan/default
+        - /var/lib/ckan/default/storage
+        - /var/lib/ckan/default/webassets
+        - /etc/ckan
+        - /etc/ckan/default
+        - /var/log/ckan
+
+    - name: Check if Solr service files exist
+      ansible.builtin.stat:
+        path: "/opt/solr/bin/solr"
+      register: solr_service_files
+
+    - name: Download and extract Solr
+      ansible.builtin.unarchive:
+        src: "https://archive.apache.org/dist/solr/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz"
+        dest: /opt
+        remote_src: true
+        owner: root
+        group: root
+      when: not solr_service_files.stat.exists
+
+    - name: Create Solr user
+      ansible.builtin.user:
+        name: solr
+        system: yes
+        shell: /bin/bash
+        home: /var/solr
+        create_home: yes
+        state: present
+
+    - name: Create Solr directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: solr
+        group: solr
+        mode: '0755'
+      loop:
+        - /var/solr
+        - /var/solr/data
+        - /var/solr/logs
+
+    - name: Copy Solr installation files to /opt/solr
+      ansible.builtin.shell: |
+        mkdir -p /opt/solr
+        cp -r /opt/solr-{{ solr_version }}/* /opt/solr/
+        chown -R solr:solr /opt/solr
+      args:
+        # This ensures the copy only happens if the directory is missing/empty
+        creates: /opt/solr/bin/solr
+
+    - name: Create Solr systemd service file
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/solr.service
+        content: |
+          [Unit]
+          Description=Apache Solr
+          After=network.target
+          
+          [Service]
+          Type=forking
+          User=solr
+          Group=solr
+          WorkingDirectory=/opt/solr
+          ExecStart=/opt/solr/bin/solr start -p 8983
+          ExecStop=/opt/solr/bin/solr stop
+          Restart=on-failure
+          RestartSec=5
+          
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Start and enable Solr
+      ansible.builtin.systemd:
+        name: solr
+        state: started
+        enabled: true
+
+    - name: Wait for Solr to be ready
+      ansible.builtin.wait_for:
+        port: 8983
+        delay: 10
+        timeout: 60
+
+    - name: Check if CKAN core exists in Solr
+      ansible.builtin.uri:
+        url: "http://localhost:8983/solr/admin/cores?action=STATUS&core=ckan"
+        method: GET
+      register: solr_core_check
+      failed_when: false
+
+    - name: Create Solr core for CKAN
+      become: true
+      become_user: solr
+      ansible.builtin.shell: |
+        /opt/solr/bin/solr create -c ckan
+      args:
+        creates: /var/solr/data/ckan
+      when: "'ckan' not in (solr_core_check.content | default(''))"
+
+    - name: Download CKAN Solr schema
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/ckan/ckan/refs/heads/{{ ckan_version }}/ckan/config/solr/schema.xml"
+        dest: /tmp/ckan_schema.xml
+        mode: '0644'
+
+    # - name: Stop Solr temporarily for schema update
+    #   ansible.builtin.systemd:
+    #     name: solr
+    #     state: stopped
+
+    - name: Replace Solr schema with CKAN schema
+      ansible.builtin.copy:
+        src: /tmp/ckan_schema.xml
+        dest: /var/solr/data/ckan/conf/managed-schema.xml
+        remote_src: true
+        owner: solr
+        group: solr
+        mode: '0644'
+      notify: Restart Solr
+
+    - name: Wait for Solr to be ready after restart
+      ansible.builtin.wait_for:
+        port: 8983
+        delay: 10
+        timeout: 60
+
+    - name: Generate session secret if not provided
+      ansible.builtin.shell: python3 -c 'import os; import binascii; print(binascii.hexlify(os.urandom(32)).decode())'
+      register: session_secret
+      when: ckan_session_secret is not defined
+
+    - name: Set session secret variable
+      ansible.builtin.set_fact:
+        ckan_session_secret: "{{ session_secret.stdout }}"
+      when: session_secret.stdout is defined
+
+    - name: Create CKAN configuration file
+      ansible.builtin.copy:
+        dest: /etc/ckan/default/ckan.ini
+        content: |
+          [app:main]
+          use = egg:ckan
+          
+          ## Database Settings
+          sqlalchemy.url = postgresql://{{ ckan_db_user }}:{{ ckan_db_password }}@localhost/{{ ckan_db_name }}
+          
+          ## Site Settings  
+          ckan.site_url = {{ ckan_site_url }}
+          ckan.site_id = {{ ckan_site_id | default('default') }}
+          
+          ## Solr Settings
+          solr_url = http://127.0.0.1:8983/solr/ckan
+          
+          ## Plugins
+          ckan.plugins = stats text_view image_view
+          
+          ## Storage Settings
+          ckan.storage_path = {{ ckan_storage_path }}
+          
+          ## Session Settings
+          beaker.session.key = ckan
+          beaker.session.secret = {{ ckan_session_secret }}
+          
+          ## Logging configuration
+          [loggers]
+          keys = root, ckan, ckanext
+          
+          [handlers]
+          keys = console
+          
+          [formatters]
+          keys = generic
+          
+          [logger_root]
+          level = WARNING
+          handlers = console
+          
+          [logger_ckan]
+          level = INFO
+          handlers = console
+          qualname = ckan
+          propagate = 0
+          
+          [logger_ckanext]
+          level = DEBUG
+          handlers = console
+          qualname = ckanext
+          propagate = 0
+          
+          [handler_console]
+          class = StreamHandler
+          args = (sys.stderr,)
+          level = NOTSET
+          formatter = generic
+          
+          [formatter_generic]
+          format = %(asctime)s %(levelname)-5.5s [%(name)s] %(message)s
+        owner: www-data
+        group: www-data
+        mode: '0640'
+
+    - name: Initialize CKAN database
+      ansible.builtin.shell: |
+        cd /usr/lib/ckan/default
+        bin/ckan -c /etc/ckan/default/ckan.ini db init
+      environment:
+        CKAN_INI: /etc/ckan/default/ckan.ini
       ignore_errors: yes
+
+    - name: Create CKAN admin user if defined
+      ansible.builtin.shell: |
+        cd /usr/lib/ckan/default
+        echo "y" | bin/ckan -c /etc/ckan/default/ckan.ini user add {{ ckan_admin_user }} email={{ ckan_admin_email }} password={{ ckan_admin_password }}
+        bin/ckan -c /etc/ckan/default/ckan.ini sysadmin add {{ ckan_admin_user }}
+      environment:
+        CKAN_INI: /etc/ckan/default/ckan.ini
+      ignore_errors: yes
+      when: 
+        - ckan_admin_user is defined
+        - ckan_admin_email is defined
+        - ckan_admin_password is defined
+
+    - name: Kill any existing CKAN processes
+      ansible.builtin.shell: |
+        pkill -f "ckan.*run" || true
+        pkill -f "ckan.*serve" || true
+        sleep 2
+      ignore_errors: yes
+
+    - name: Create CKAN supervisor configuration
+      ansible.builtin.copy:
+        dest: /etc/supervisor/conf.d/ckan.conf
+        content: |
+          [program:ckan]
+          command=/usr/lib/ckan/default/bin/ckan -c /etc/ckan/default/ckan.ini run --host 0.0.0.0 --port 5000
+          autostart=true
+          autorestart=true
+          redirect_stderr=true
+          stdout_logfile=/var/log/ckan/ckan.log
+          stderr_logfile=/var/log/ckan/ckan.error.log
+          user=www-data
+          environment=CKAN_INI="/etc/ckan/default/ckan.ini"
+        mode: '0644'
+
+    - name: Update supervisor
+      ansible.builtin.shell: |
+        supervisorctl reread
+        supervisorctl update
+
+    - name: Start CKAN via supervisor
+      ansible.builtin.supervisorctl:
+        name: ckan
+        state: restarted
+
+    - name: Configure Nginx for CKAN
+      ansible.builtin.copy:
+        dest: /etc/nginx/sites-available/ckan
+        content: |
+          server {
+              listen 80;
+              server_name {{ ansible_default_ipv4.address | default('_') }};
+              client_max_body_size 100M;
+              
+              location / {
+                  proxy_pass http://127.0.0.1:5000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_buffering off;
+                  proxy_request_buffering off;
+              }
+          }
+        mode: '0644'
+
+    - name: Enable Nginx CKAN site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/ckan
+        dest: /etc/nginx/sites-enabled/ckan
+        state: link
+
+    - name: Remove default Nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Test Nginx configuration
+      ansible.builtin.shell: nginx -t
+      register: nginx_test
+
+    - name: Restart Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+        enabled: true
+      when: nginx_test.rc == 0
+
+    - name: Wait for CKAN to be ready
+      ansible.builtin.wait_for:
+        port: 5000
+        delay: 5
+        timeout: 60
+
+    - name: Test CKAN availability
+      ansible.builtin.uri:
+        url: "http://localhost:5000"
+        method: GET
+        status_code: [200, 302]
+      register: ckan_test
+      retries: 3
+      delay: 5
+      ignore_errors: yes
+
+    - name: Display CKAN access information
+      ansible.builtin.debug:
+        msg:
+          - "======================================"
+          - "CKAN installation completed!"
+          - "======================================"
+          - "Access CKAN at: http://{{ ansible_default_ipv4.address | default('YOUR_SERVER_IP') }}"
+          - "Direct access: http://{{ ansible_default_ipv4.address | default('YOUR_SERVER_IP') }}:5000"
+          - "Admin user: {{ ckan_admin_user | default('Not created - define in vault') }}"
+          - ""
+          - "Check status with:"
+          - "  sudo supervisorctl status ckan"
+          - "  sudo systemctl status solr"
+          - "  sudo tail -f /var/log/ckan/ckan.log"
+          - "======================================"
+  handlers:
+    - name: Restart Solr
+      ansible.builtin.systemd:
+        name: solr
+        state: restarted
