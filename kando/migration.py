@@ -291,9 +291,9 @@ def get_name_from_title(title):
         str: The name of the dataset.
     """
 
-    # Remove any special characters from the title
-    name = (title.replace(" ", "_").replace(":", "").replace(",", "")
-            .replace("(", "").replace(")", "").replace("/", "")).lower()
+    # Name should only contain alphanumeric characters, and - or _
+    # Replace spaces with underscores and remove special characters. Look at each character and make sure it is alphanumeric or - or _
+    name = ''.join(c if c.isalnum() or c in ['-', '_', ' '] else '' for c in title.lower().replace(' ', '_'))
 
     # If the length of the name is greater than 100, truncate it to 100 characters
     if len(name) > 100:

@@ -205,7 +205,7 @@ def get_files(path, limit=10, headers=default_headers):
     """
     url = f'{BASE_URL}/secured/filesystem/paged-directory'  # Construct the API URL for the directory endpoint
     params = {'limit': limit, 'path': path}  # Set the request parameters
-    response = requests.get(url, headers=headers, params=params, timeout=10)  # Send a GET request to the API
+    response = requests.get(url, headers=headers, params=params, timeout=30)  # Send a GET request to the API
     if response.status_code == 200:
         files = response.json()  # Parse the JSON response
         return files
@@ -232,7 +232,7 @@ def get_datasets(path='/iplant/home/shared/commons_repo/curated/', headers=defau
     """
     url = f'{BASE_URL}/secured/filesystem/directory'  # Construct the API URL for the directory endpoint
     params = {'path': path}  # Set the request parameters
-    response = requests.get(url, headers=headers, params=params, timeout=10)  # Send a GET request to the API
+    response = requests.get(url, headers=headers, params=params, timeout=30)  # Send a GET request to the API
     if response.status_code == 200:
         directories = response.json()  # Parse the JSON response
         datasets = directories['folders']  # Extract the list of datasets
