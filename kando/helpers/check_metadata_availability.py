@@ -1,5 +1,5 @@
+import helpes.migration as migration
 import de
-import migration
 
 
 def check_metadata_availability(de_link, username, password):

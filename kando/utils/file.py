@@ -11,10 +11,11 @@ from tempfile import gettempdir
 import pandas as pd
 import requests
 
-import croissant
-import dcat
+import helpers.croissant as croissant
+import helpers.dcat as dcat
+import helpers.migration as migration
+
 import de
-import migration
 
 
 def extract_metadata(json_data):

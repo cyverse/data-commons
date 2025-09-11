@@ -8,7 +8,7 @@ Usage: python3 migrate_commons.py <username> <password>
 
 import sys
 import de
-import migrate_utils
+import utils.migrate as migrate_utils
 
 BASE_PATH = "/iplant/home/shared/commons_repo/curated"
 

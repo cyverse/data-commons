@@ -1,7 +1,7 @@
-import migration
+import helpers.migration as migration
 import ckan
 import de
-import file_utils as fu
+import utils.file as fu
 
 
 def prepare_ckan_data(metadata, owner_org, curated=False, title=None, description=None, author=None):

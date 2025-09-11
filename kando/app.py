@@ -11,11 +11,11 @@ import ckan
 import de
 import migration
 
-import file_utils as fu
-import log_utils as lu
+import utils.file as fu
+import utils.log as lu
 from check_metadata_availability import check_metadata_availability
 from validate_dcat_json import validate_dcat_json
-import migrate_utils
+import utils.migrate as migrate_utils
 
 from aws.aws_main import get_s3_client, replicate_aws_bucket_to_ckan
 from gcs.gcs_main import replicate_gcs_bucket_to_ckan
