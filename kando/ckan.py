@@ -16,12 +16,16 @@ It includes functions to:
 
 import json
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
 
 # CKAN instance URL
-CKAN_URL = 'http://128.196.65.71:5000/'
+CKAN_URL = os.getenv('CKAN_URL')
 
 # API Key for ckan.cyverse.org
-API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJ1RF9QaldPa3RhN0lNYVpuTDJHWll4MFFoUkIwX0daWnFmVDRhRnJTMWs4IiwiaWF0IjoxNzU3MDE3NzQ1fQ.B2bfiZ4I8cjySdHu3kFsiXB0FXtAm2ern9h3BchUOdc'
+API_KEY = os.getenv('CKAN_API_KEY')
 
 def get_organizations():
     """
@@ -29,7 +33,7 @@ def get_organizations():
     Returns:
         dict: The response from the CKAN API, typically containing a list of organizations.
     """
-    url = 'https://ckan.cyverse.rocks/api/3/action/organization_list'
+    url = f'{CKAN_URL}/api/3/action/organization_list'
     headers = {'Authorization': API_KEY}
 
     response = requests.get(url, headers=headers, timeout=10)

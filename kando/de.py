@@ -6,6 +6,9 @@ import json
 from datetime import datetime
 import requests
 from requests.auth import HTTPBasicAuth
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 
 def get_de_api_key(username, password):
@@ -22,7 +25,8 @@ def get_de_api_key(username, password):
     Returns:
         str: The access token for DE API.
     """
-    url = 'https://de.cyverse.org/terrain/token/keycloak'
+    url = os.getenv('TERRAIN_URL') + '/token/keycloak'  # DE token endpoint
+
     response = requests.get(url, auth=HTTPBasicAuth(username, password), timeout=10)
 
     if response.status_code == 200:
@@ -34,7 +38,7 @@ def get_de_api_key(username, password):
 
 
 # Base URL for the Discovery Environment API
-BASE_URL = 'https://de.cyverse.org/terrain'
+BASE_URL = os.getenv('TERRAIN_URL')
 
 # Get the API using default login credentials
 api_key = 'Bearer ' + get_de_api_key('tanmaytest', 'password123')
@@ -183,7 +187,7 @@ def get_all_metadata_file(file):
     metadata_dict['file_type'] = file_type
 
     # Construct the WebDAV location URL
-    web_dav_location = "https://data.cyverse.org/dav-anon" + file['path']
+    web_dav_location = os.getenv('WEB_DAV_URL') + file['path']
     metadata_dict['web_dav_location'] = web_dav_location
 
     return metadata_dict
