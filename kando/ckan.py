@@ -18,10 +18,10 @@ import json
 import requests
 
 # CKAN instance URL
-CKAN_URL = 'https://ckan.cyverse.rocks/'
+CKAN_URL = 'http://128.196.65.71:5000/'
 
 # API Key for ckan.cyverse.org
-API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJid0tfcVU5YUdlQkxScTNuWDRZbkdfRzctRk90bUdzeDh0ZzVwM19GUWJRIiwiaWF0IjoxNzE4MDg0NDcwfQ.f1Zp-LlzrhkqBvBh-bjm7hE0oOJiXKzRutFFjg6ykfo'
+API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJ1RF9QaldPa3RhN0lNYVpuTDJHWll4MFFoUkIwX0daWnFmVDRhRnJTMWs4IiwiaWF0IjoxNzU3MDE3NzQ1fQ.B2bfiZ4I8cjySdHu3kFsiXB0FXtAm2ern9h3BchUOdc'
 
 def get_organizations():
     """
@@ -117,7 +117,7 @@ def add_resource_link(data):
     headers = {
         'Authorization': API_KEY  # API key for authorization
     }
-    response = requests.post(resource_url, headers=headers, json=data, timeout=10)  # Send POST request to add resource link
+    response = requests.post(resource_url, headers=headers, json=data, timeout=30)  # Send POST request to add resource link
     return response.json()  # Return the JSON response from the API
 
 
@@ -144,7 +144,7 @@ def update_dataset_metadata(dataset_id, new_metadata):
     }
     data = new_metadata
     data['id'] = dataset_id  # Add the dataset ID to the data
-    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)  # Send POST request to update dataset
+    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10) # Send POST request to update dataset
     return response.json()  # Return the JSON response from the API
 
 

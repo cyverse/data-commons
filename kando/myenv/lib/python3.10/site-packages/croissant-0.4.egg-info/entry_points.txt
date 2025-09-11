@@ -1,0 +1,3 @@
+[console_scripts]
+croissant = croissant.bin:launch
+
