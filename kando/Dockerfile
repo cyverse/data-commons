@@ -15,4 +15,4 @@ RUN --mount=type=bind,source=requirements.txt,target=/requirements.txt \
 EXPOSE 7860
 
 # Run the application
-CMD ["python", "/app/gradio_main.py"]
+CMD ["python", "/app/app.py"]
