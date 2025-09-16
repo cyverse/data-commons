@@ -270,6 +270,10 @@
           ## Site Settings  
           ckan.site_url = {{ ckan_site_url }}
           ckan.site_id = {{ ckan_site_id | default('default') }}
+
+          ## Authentication Settings
+          ckan.auth.user_create_organizations = False
+
           
           ## Solr Settings
           solr_url = http://127.0.0.1:8983/solr/ckan
