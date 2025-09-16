@@ -13,7 +13,7 @@ It includes functions to:
 - Delete all datasets in an organization
 - Pretty-print JSON data
 """
-
+import os
 import json
 import requests
 from dotenv import load_dotenv

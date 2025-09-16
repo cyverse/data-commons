@@ -1,7 +1,7 @@
 """
 Used to manage communication with the CyVerse Discovery Environment (DE).
 """
-
+import os
 import json
 from datetime import datetime
 import requests

@@ -1,6 +1,7 @@
 """
 Defines the Gradio-based user interface and its various tabs.
 """
+import os
 import sys
 import json
 
@@ -9,12 +10,12 @@ from mlcroissant import Dataset
 
 import ckan
 import de
-import migration
+import helpers.migration as migration
 
 import utils.file as fu
 import utils.log as lu
-from check_metadata_availability import check_metadata_availability
-from validate_dcat_json import validate_dcat_json
+from helpers.check_metadata_availability import check_metadata_availability
+from helpers.validate_dcat_json import validate_dcat_json
 import utils.migrate as migrate_utils
 
 from aws.aws_main import get_s3_client, replicate_aws_bucket_to_ckan
@@ -525,5 +526,5 @@ iface = gr.TabbedInterface(
 )
 
 # Launch the Gradio interface
-# iface.launch(server_name="0.0.0.0", server_port=7860)
-iface.launch()
+iface.launch(server_name="0.0.0.0", server_port=7860)
+# iface.launch()

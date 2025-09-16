@@ -4,8 +4,8 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy only Python files into /app to reduce image size.
-COPY *.py /app/
+# Copy all Python files and maintain directory structure
+COPY . /app/
 
 # Install dependencies from the requirements.txt mounted at build time
 RUN --mount=type=bind,source=requirements.txt,target=/requirements.txt \
