@@ -273,7 +273,7 @@
 
           ## Authentication Settings
           ckan.auth.user_create_organizations = False
-
+          ckan.auth.create_user_via_web = True
           
           ## Solr Settings
           solr_url = http://127.0.0.1:8983/solr/ckan
