@@ -326,33 +326,78 @@
         group: www-data
         mode: '0640'
 
+    - name: Check if CKAN database is already initialized
+      ansible.builtin.shell: |
+        cd /usr/lib/ckan/default
+        bin/ckan -c /etc/ckan/default/ckan.ini db status
+      environment:
+        CKAN_INI: /etc/ckan/default/ckan.ini
+      register: ckan_db_status
+      failed_when: false
+      changed_when: false
+
     - name: Initialize CKAN database
       ansible.builtin.shell: |
         cd /usr/lib/ckan/default
         bin/ckan -c /etc/ckan/default/ckan.ini db init
       environment:
         CKAN_INI: /etc/ckan/default/ckan.ini
-      ignore_errors: yes
+      when: ckan_db_status.rc != 0 or 'database is not set up' in ckan_db_status.stderr | lower
 
-    - name: Create CKAN admin user if defined
+    - name: Display message if admin credentials not defined
+      ansible.builtin.debug:
+        msg: "Admin user creation skipped - ckan_admin_user, ckan_admin_email, and/or ckan_admin_password not defined in vault.yml"
+      when: 
+        - ckan_admin_user is not defined or ckan_admin_email is not defined or ckan_admin_password is not defined
+
+    - name: Check if CKAN admin user already exists
+      ansible.builtin.shell: |
+        cd /usr/lib/ckan/default
+        bin/ckan -c /etc/ckan/default/ckan.ini user show {{ ckan_admin_user }}
+      environment:
+        CKAN_INI: /etc/ckan/default/ckan.ini
+      register: user_exists
+      failed_when: false
+      changed_when: false
+      when: 
+        - ckan_admin_user is defined
+        - ckan_admin_email is defined
+        - ckan_admin_password is defined
+
+    - name: Create CKAN admin user
       ansible.builtin.shell: |
         cd /usr/lib/ckan/default
         echo "y" | bin/ckan -c /etc/ckan/default/ckan.ini user add {{ ckan_admin_user }} email={{ ckan_admin_email }} password={{ ckan_admin_password }}
         bin/ckan -c /etc/ckan/default/ckan.ini sysadmin add {{ ckan_admin_user }}
       environment:
         CKAN_INI: /etc/ckan/default/ckan.ini
-      ignore_errors: yes
       when: 
         - ckan_admin_user is defined
         - ckan_admin_email is defined
         - ckan_admin_password is defined
+        - user_exists.rc != 0
 
-    - name: Kill any existing CKAN processes
+    - name: Display admin user creation status
+      ansible.builtin.debug:
+        msg: "Admin user '{{ ckan_admin_user }}' already exists - skipping creation"
+      when: 
+        - ckan_admin_user is defined
+        - user_exists.rc == 0
+
+    - name: Check for existing CKAN processes
       ansible.builtin.shell: |
-        pkill -f "ckan.*run" || true
-        pkill -f "ckan.*serve" || true
+        pgrep -f "ckan.*(run|serve)" || echo "no_processes"
+      register: ckan_processes
+      changed_when: false
+      failed_when: false
+
+    - name: Kill existing CKAN processes if found
+      ansible.builtin.shell: |
+        pkill -f "ckan.*run"
+        pkill -f "ckan.*serve"
         sleep 2
-      ignore_errors: yes
+      when: ckan_processes.stdout != "no_processes" and ckan_processes.stdout != ""
+      ignore_errors: true
 
     - name: Create CKAN supervisor configuration
       ansible.builtin.copy:
@@ -434,9 +479,14 @@
         method: GET
         status_code: [200, 302]
       register: ckan_test
-      retries: 3
-      delay: 5
-      ignore_errors: yes
+      retries: 5
+      delay: 10
+      until: ckan_test.status in [200, 302]
+
+    - name: Verify CKAN is responding correctly
+      ansible.builtin.fail:
+        msg: "CKAN failed to start properly. Check logs at /var/log/ckan/ckan.log and /var/log/ckan/ckan.error.log"
+      when: ckan_test.status not in [200, 302]
 
     - name: Display CKAN access information
       ansible.builtin.debug:
