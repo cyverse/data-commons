@@ -1,5 +1,5 @@
 ---
-- name: Install and Configure CKAN on Ubuntu 22.04
+- name: Install and Configure CKAN on Ubuntu 22.04 with HTTPS
   hosts: ckan_servers
   become: true
   vars_files:
@@ -8,8 +8,11 @@
   vars:
     ckan_version: "2.11"
     solr_version: "9.5.0"
-    ckan_site_url: "http://{{ ansible_default_ipv4.address | default('localhost') }}:5000"
+    ckan_domain: "dc.cyverse.org"
+    ckan_site_url: "https://{{ ckan_domain }}"
     ckan_storage_path: "/var/lib/ckan/default/storage"
+    ssl_certificate_path: "/etc/ssl/certs/cyverse.org.pem"
+    ssl_certificate_key_path: "/etc/ssl/private/cyverse.org.key"
     
   tasks:
     - name: Update system packages
@@ -38,6 +41,22 @@
           - lsof
           - python3-psycopg2
         state: present
+
+    - name: Verify SSL certificate exists
+      ansible.builtin.stat:
+        path: "{{ ssl_certificate_path }}"
+      register: ssl_cert_file
+      failed_when: not ssl_cert_file.stat.exists
+
+    - name: Verify SSL private key exists
+      ansible.builtin.stat:
+        path: "{{ ssl_certificate_key_path }}"
+      register: ssl_key_file
+      failed_when: not ssl_key_file.stat.exists
+
+    - name: Display SSL certificate status
+      ansible.builtin.debug:
+        msg: "Using existing SSL certificates at {{ ssl_certificate_path }} and {{ ssl_certificate_key_path }}"
 
     - name: Create Java environment script
       ansible.builtin.copy:
@@ -163,7 +182,6 @@
         cp -r /opt/solr-{{ solr_version }}/* /opt/solr/
         chown -R solr:solr /opt/solr
       args:
-        # This ensures the copy only happens if the directory is missing/empty
         creates: /opt/solr/bin/solr
 
     - name: Create Solr systemd service file
@@ -225,11 +243,6 @@
         url: "https://raw.githubusercontent.com/ckan/ckan/refs/heads/{{ ckan_version }}/ckan/config/solr/schema.xml"
         dest: /tmp/ckan_schema.xml
         mode: '0644'
-
-    # - name: Stop Solr temporarily for schema update
-    #   ansible.builtin.systemd:
-    #     name: solr
-    #     state: stopped
 
     - name: Replace Solr schema with CKAN schema
       ansible.builtin.copy:
@@ -424,14 +437,45 @@
         name: ckan
         state: restarted
 
-    - name: Configure Nginx for CKAN
+    - name: Wait for CKAN to be ready on port 5000
+      ansible.builtin.wait_for:
+        port: 5000
+        delay: 5
+        timeout: 60
+
+    - name: Configure Nginx for CKAN with HTTPS
       ansible.builtin.copy:
         dest: /etc/nginx/sites-available/ckan
         content: |
+          # HTTP - Redirect to HTTPS
           server {
               listen 80;
-              server_name {{ ansible_default_ipv4.address | default('_') }};
+              server_name {{ ckan_domain }};
+              return 301 https://$server_name$request_uri;
+          }
+          
+          # HTTPS
+          server {
+              listen 443 ssl http2;
+              server_name {{ ckan_domain }};
               client_max_body_size 100M;
+              
+              # SSL Configuration
+              ssl_certificate {{ ssl_certificate_path }};
+              ssl_certificate_key {{ ssl_certificate_key_path }};
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_ciphers HIGH:!aNULL:!MD5;
+              ssl_prefer_server_ciphers on;
+              
+              # SSL Session Cache
+              ssl_session_cache shared:SSL:10m;
+              ssl_session_timeout 10m;
+              
+              # Security Headers
+              add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+              add_header X-Frame-Options SAMEORIGIN;
+              add_header X-Content-Type-Options nosniff;
+              add_header X-XSS-Protection "1; mode=block";
               
               location / {
                   proxy_pass http://127.0.0.1:5000;
@@ -439,6 +483,7 @@
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_set_header X-Forwarded-Host $host;
                   proxy_buffering off;
                   proxy_request_buffering off;
               }
@@ -467,17 +512,18 @@
         enabled: true
       when: nginx_test.rc == 0
 
-    - name: Wait for CKAN to be ready
+    - name: Wait for HTTPS to be ready
       ansible.builtin.wait_for:
-        port: 5000
+        port: 443
         delay: 5
-        timeout: 60
+        timeout: 30
 
-    - name: Test CKAN availability
+    - name: Test CKAN availability via HTTPS
       ansible.builtin.uri:
-        url: "http://localhost:5000"
+        url: "https://{{ ckan_domain }}"
         method: GET
         status_code: [200, 302]
+        validate_certs: yes
       register: ckan_test
       retries: 5
       delay: 10
@@ -494,17 +540,26 @@
           - "======================================"
           - "CKAN installation completed!"
           - "======================================"
-          - "Access CKAN at: http://{{ ansible_default_ipv4.address | default('YOUR_SERVER_IP') }}"
-          - "Direct access: http://{{ ansible_default_ipv4.address | default('YOUR_SERVER_IP') }}:5000"
+          - "Access CKAN at: https://{{ ckan_domain }}"
           - "Admin user: {{ ckan_admin_user | default('Not created - define in vault') }}"
+          - ""
+          - "SSL Certificate: {{ ssl_certificate_path }}"
+          - "SSL Private Key: {{ ssl_certificate_key_path }}"
           - ""
           - "Check status with:"
           - "  sudo supervisorctl status ckan"
           - "  sudo systemctl status solr"
+          - "  sudo systemctl status nginx"
           - "  sudo tail -f /var/log/ckan/ckan.log"
           - "======================================"
+
   handlers:
     - name: Restart Solr
       ansible.builtin.systemd:
         name: solr
+        state: restarted
+
+    - name: Restart Nginx
+      ansible.builtin.systemd:
+        name: nginx
         state: restarted
