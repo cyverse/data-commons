@@ -305,12 +305,14 @@
           ## Authentication Settings
           ckan.auth.user_create_organizations = False
           ckan.auth.create_user_via_web = False
+          ckan.auth.public_user_details = False
+          ckan.auth.create_dataset_if_not_in_organization = False
           
           ## Solr Settings
           solr_url = http://127.0.0.1:8983/solr/ckan
           
           ## Plugins - OIDC PKCE enabled
-          ckan.plugins = stats text_view image_view oidc_pkce
+          ckan.plugins = stats text_view image_view activity oidc_pkce
           
           ## Storage Settings
           ckan.storage_path = {{ ckan_storage_path }}
