@@ -1,5 +1,5 @@
 ---
-- name: Install and Configure CKAN on Ubuntu 22.04 with HTTPS
+- name: Install and Configure CKAN on Ubuntu 22.04 with HTTPS and OIDC
   hosts: ckan_servers
   become: true
   vars_files:
@@ -13,6 +13,17 @@
     ckan_storage_path: "/var/lib/ckan/default/storage"
     ssl_certificate_path: "/etc/ssl/certs/cyverse.org.pem"
     ssl_certificate_key_path: "/etc/ssl/private/cyverse.org.key"
+    
+    # OIDC Configuration - Keycloak
+    oidc_base_url: "https://kc.cyverse.org/auth"
+    oidc_realm: "CyVerse"
+    oidc_auth_path: "/realms/{{ oidc_realm }}/protocol/openid-connect/auth"
+    oidc_token_path: "/realms/{{ oidc_realm }}/protocol/openid-connect/token"
+    oidc_userinfo_path: "/realms/{{ oidc_realm }}/protocol/openid-connect/userinfo"
+    oidc_redirect_path: " /local/oidc/handler"
+    oidc_scope: "openid email profile"
+    oidc_use_same_id: true
+    oidc_munge_password: true
     
   tasks:
     - name: Update system packages
@@ -260,6 +271,13 @@
         delay: 10
         timeout: 60
 
+    # OIDC PKCE Extension Installation
+    - name: Install ckanext-oidc-pkce in CKAN virtual environment
+      ansible.builtin.pip:
+        name: ckanext-oidc-pkce
+        virtualenv: /usr/lib/ckan/default
+        state: present
+
     - name: Generate session secret if not provided
       ansible.builtin.shell: python3 -c 'import os; import binascii; print(binascii.hexlify(os.urandom(32)).decode())'
       register: session_secret
@@ -270,7 +288,7 @@
         ckan_session_secret: "{{ session_secret.stdout }}"
       when: session_secret.stdout is defined
 
-    - name: Create CKAN configuration file
+    - name: Create CKAN configuration file with OIDC settings
       ansible.builtin.copy:
         dest: /etc/ckan/default/ckan.ini
         content: |
@@ -286,13 +304,13 @@
 
           ## Authentication Settings
           ckan.auth.user_create_organizations = False
-          ckan.auth.create_user_via_web = True
+          ckan.auth.create_user_via_web = False
           
           ## Solr Settings
           solr_url = http://127.0.0.1:8983/solr/ckan
           
-          ## Plugins
-          ckan.plugins = stats text_view image_view
+          ## Plugins - OIDC PKCE enabled
+          ckan.plugins = stats text_view image_view oidc_pkce
           
           ## Storage Settings
           ckan.storage_path = {{ ckan_storage_path }}
@@ -300,6 +318,31 @@
           ## Session Settings
           beaker.session.key = ckan
           beaker.session.secret = {{ ckan_session_secret }}
+          
+          ## OIDC PKCE Configuration
+          # Base URL of the OIDC provider (Keycloak)
+          ckanext.oidc_pkce.base_url = {{ oidc_base_url }}
+          
+          # Client credentials from Keycloak
+          ckanext.oidc_pkce.client_id = {{ oidc_client_id }}
+          ckanext.oidc_pkce.client_secret = {{ oidc_client_secret }}
+          
+          # Keycloak-specific OIDC endpoints
+          ckanext.oidc_pkce.auth_path = {{ oidc_auth_path }}
+          ckanext.oidc_pkce.token_path = {{ oidc_token_path }}
+          ckanext.oidc_pkce.userinfo_path = {{ oidc_userinfo_path }}
+          
+          # Callback path for OIDC authentication
+          ckanext.oidc_pkce.redirect_path = {{ oidc_redirect_path }}
+          
+          # OAuth scopes
+          ckanext.oidc_pkce.scope = {{ oidc_scope }}
+          
+          # Use same user ID from SSO provider
+          ckanext.oidc_pkce.use_same_id = {{ oidc_use_same_id }}
+          
+          # Prevent password-based login for SSO users
+          ckanext.oidc_pkce.munge_password = {{ oidc_munge_password }}
           
           ## Logging configuration
           [loggers]
@@ -538,13 +581,18 @@
       ansible.builtin.debug:
         msg:
           - "======================================"
-          - "CKAN installation completed!"
+          - "CKAN installation with OIDC completed!"
           - "======================================"
           - "Access CKAN at: https://{{ ckan_domain }}"
+          - "OIDC Login: https://{{ ckan_domain }}/user/login/oidc-pkce"
           - "Admin user: {{ ckan_admin_user | default('Not created - define in vault') }}"
           - ""
           - "SSL Certificate: {{ ssl_certificate_path }}"
           - "SSL Private Key: {{ ssl_certificate_key_path }}"
+          - ""
+          - "OIDC Provider: {{ oidc_base_url }}"
+          - "OIDC Realm: {{ oidc_realm }}"
+          - "OIDC Client: {{ oidc_client_id }}"
           - ""
           - "Check status with:"
           - "  sudo supervisorctl status ckan"
