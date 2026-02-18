@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
-
 def get_de_api_key(username, password):
     """
     Obtain an API key from the Discovery Environment (DE) using the username and password.
@@ -41,7 +40,9 @@ def get_de_api_key(username, password):
 BASE_URL = os.getenv('TERRAIN_URL')
 
 # Get the API using default login credentials
-api_key = 'Bearer ' + get_de_api_key('tanmaytest', 'password123')
+de_username = os.getenv('DE_USERNAME')
+de_password = os.getenv('DE_PASSWORD')
+api_key = 'Bearer ' + get_de_api_key(de_username, de_password)
 
 # Headers for the requests
 default_headers = {
