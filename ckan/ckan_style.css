@@ -1,0 +1,18 @@
+.account-masthead {
+    background-color: #004471;
+}
+.masthead {
+  background-color: #0971ab;
+}
+/* Change the colors of the "Search Your Data" box. */
+.homepage .module-search .module-content {
+  background-color: #0971ab;
+}
+/* Change the background color of the "Popular Tags" box. */
+.homepage .module-search .tags {
+  background-color: #142248;
+}
+.site-footer,
+body {
+  background-color: #0971ab;
+}
