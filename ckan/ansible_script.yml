@@ -652,6 +652,71 @@
         msg: "CKAN failed to start properly. Check logs at /var/log/ckan/ckan.log and /var/log/ckan/ckan.error.log"
       when: ckan_test.status not in [200, 302]
 
+    # ---- AVU Metadata Sync to CKAN (hourly cron job) ----
+
+    - name: Create sync directory
+      ansible.builtin.file:
+        path: /opt/ckan-sync
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Copy sync scripts
+      ansible.builtin.copy:
+        src: ../kando/sync/
+        dest: /opt/ckan-sync/kando/sync/
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Create sync __init__.py for kando package
+      ansible.builtin.copy:
+        content: ""
+        dest: /opt/ckan-sync/kando/__init__.py
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Create sync requirements file
+      ansible.builtin.copy:
+        content: |
+          requests
+          python-dotenv
+        dest: /opt/ckan-sync/requirements.txt
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Create sync virtual environment
+      ansible.builtin.pip:
+        requirements: /opt/ckan-sync/requirements.txt
+        virtualenv: /opt/ckan-sync/venv
+        virtualenv_command: python3 -m venv
+
+    - name: Configure sync environment
+      ansible.builtin.copy:
+        content: |
+          CKAN_URL=http://127.0.0.1:{{ ckan_port }}
+          CKAN_API_KEY={{ ckan_sync_api_key }}
+          TERRAIN_URL=https://de.cyverse.org/terrain
+          DE_USERNAME={{ de_sync_username }}
+          DE_PASSWORD={{ de_sync_password }}
+        dest: /opt/ckan-sync/.env
+        owner: www-data
+        group: www-data
+        mode: '0600'
+      when: ckan_sync_api_key is defined
+
+    - name: Add AVU sync crontab entry
+      ansible.builtin.cron:
+        name: "Sync AVU metadata to CKAN"
+        minute: "0"
+        user: www-data
+        job: "flock -n /tmp/ckan-sync.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --state-file /opt/ckan-sync/sync_state.json >> /var/log/ckan/sync.log 2>&1"
+        cron_file: ckan-avu-sync
+      when: ckan_sync_api_key is defined
+
     - name: Display CKAN access information
       ansible.builtin.debug:
         msg:
@@ -669,11 +734,14 @@
           - "OIDC Realm: {{ oidc_realm }}"
           - "OIDC Client: {{ oidc_client_id }}"
           - ""
+          - "AVU Sync: {{ 'Enabled (hourly)' if ckan_sync_api_key is defined else 'Disabled (set ckan_sync_api_key in vault)' }}"
+          - ""
           - "Check status with:"
           - "  sudo supervisorctl status ckan"
           - "  sudo systemctl status solr"
           - "  sudo systemctl status nginx"
           - "  sudo tail -f /var/log/ckan/ckan.log"
+          - "  sudo tail -f /var/log/ckan/sync.log"
           - "======================================"
 
   handlers:
