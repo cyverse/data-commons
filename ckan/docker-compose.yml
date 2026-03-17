@@ -1,0 +1,79 @@
+services:
+  ckan:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+    environment:
+      CKAN_SQLALCHEMY_URL: postgresql://ckan:ckan@db/ckan
+      CKAN_SOLR_URL: http://solr:8983/solr/ckan
+      CKAN_REDIS_URL: redis://redis:6379/0
+      CKAN_SITE_URL: http://localhost:5000
+      CKAN_SITE_ID: default
+      CKAN___BEAKER__SESSION__SECRET: local-dev-secret-change-me
+      CKAN__PLUGINS: "image_view text_view datatables_view envvars"
+    volumes:
+      - ckan_storage:/var/lib/ckan
+      - ./ckan_style.css:/srv/app/src/ckan/ckan/public/base/css/custom.css:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      solr:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/3/action/status_show"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ckan
+      POSTGRES_PASSWORD: ckan
+      POSTGRES_DB: ckan
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ckan"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  solr-init:
+    image: ckan/ckan-solr:2.11-solr9
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-c", "chown -R 8983:8983 /var/solr/data"]
+    volumes:
+      - solr_data:/var/solr/data
+
+  solr:
+    image: ckan/ckan-solr:2.11-solr9
+    volumes:
+      - solr_data:/var/solr/data
+    depends_on:
+      solr-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8983/solr/ckan/admin/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ckan_storage:
+  pg_data:
+  solr_data:
