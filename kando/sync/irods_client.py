@@ -24,6 +24,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 TERRAIN_URL = os.getenv("TERRAIN_URL", "https://de.cyverse.org/terrain")
+WEBDAV_URL = os.getenv("WEBDAV_URL", "https://data.cyverse.org/dav")
 CURATED_PATH = "/iplant/home/shared/commons_repo/curated"
 
 
@@ -59,15 +60,37 @@ class IRODSClient:
             raise RuntimeError(f"Terrain auth failed: {resp.status_code} {resp.text[:200]}")
         return resp.json()["access_token"]
 
-    def list_curated_directories(self) -> list[dict]:
+    def is_publicly_readable(self, path: str) -> bool:
         """
-        List subdirectories under the curated collection.
+        Check if an iRODS path is publicly readable via anonymous WebDAV.
+
+        Makes an unauthenticated HEAD request to the CyVerse WebDAV endpoint
+        using the 'anonymous' user (empty password). Returns True if the server
+        responds with 200 or 207 (WebDAV Multi-Status), which mirrors the iRODS
+        ACL: public folders are accessible to the anonymous user.
+        """
+        url = f"{WEBDAV_URL}{path}"
+        try:
+            resp = requests.head(
+                url,
+                auth=HTTPBasicAuth("anonymous", ""),
+                timeout=10,
+                allow_redirects=True,
+            )
+            return resp.status_code in (200, 207)
+        except requests.RequestException as e:
+            logger.warning("Public access check failed for %s: %s", path, e)
+            return False
+
+    def list_project_directories(self, base_path: str) -> list[dict]:
+        """
+        List subdirectories under any iRODS collection path.
 
         Returns:
             List of dicts with keys: 'name', 'path', 'modify_time', 'create_time', 'id'
         """
         url = f"{self.base_url}/secured/filesystem/directory"
-        params = {"path": CURATED_PATH}
+        params = {"path": base_path}
         resp = self.session.get(url, params=params, timeout=60)
         resp.raise_for_status()
         data = resp.json()
@@ -82,6 +105,10 @@ class IRODSClient:
                 "id": folder.get("id", ""),
             })
         return dirs
+
+    def list_curated_directories(self) -> list[dict]:
+        """List subdirectories under the curated collection."""
+        return self.list_project_directories(CURATED_PATH)
 
     def get_collection_metadata(self, path: str, folder_info: dict = None) -> dict:
         """

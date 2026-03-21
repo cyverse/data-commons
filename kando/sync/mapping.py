@@ -171,13 +171,28 @@ def get_extras(dataset_metadata: dict) -> list:
     return extras
 
 
-def map_avus_to_ckan(dataset_metadata: dict) -> dict:
+_DEFAULT_GROUPS = [{
+    "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. "
+                   "These data are stable and contents will not change.",
+    "display_name": "CyVerse Curated",
+    "name": "cyverse-curated",
+    "title": "CyVerse Curated"
+}]
+
+
+def map_avus_to_ckan(
+    dataset_metadata: dict,
+    owner_org: str = 'cyverse',
+    groups: list = None,
+) -> dict:
     """
     Map a full AVU metadata dict to a CKAN dataset dict ready for package_create/update.
 
     Args:
         dataset_metadata: Dict of AVU attrs (multi-value attrs as lists),
                          plus optional 'date_created', 'date_modified', 'de_path'.
+        owner_org: CKAN organization slug (default: 'cyverse').
+        groups: CKAN group list (default: cyverse-curated group).
 
     Returns:
         Dict suitable for CKAN package_create or package_update API.
@@ -187,7 +202,7 @@ def map_avus_to_ckan(dataset_metadata: dict) -> dict:
     title = get_title(dataset_metadata)
 
     data = {
-        'owner_org': 'cyverse',
+        'owner_org': owner_org,
         'private': False,
         'name': get_name_from_title(title),
         'title': title,
@@ -195,13 +210,7 @@ def map_avus_to_ckan(dataset_metadata: dict) -> dict:
         'author': get_author(dataset_metadata),
         'tags': get_tags(dataset_metadata),
         'extras': get_extras(dataset_metadata),
-        'groups': [{
-            "description": "All data that have been given a permanent identifier (DOI or ARK) by CyVerse. "
-                           "These data are stable and contents will not change.",
-            "display_name": "CyVerse Curated",
-            "name": "cyverse-curated",
-            "title": "CyVerse Curated"
-        }],
+        'groups': groups if groups is not None else _DEFAULT_GROUPS,
     }
 
     data.update(get_license_info(dataset_metadata))

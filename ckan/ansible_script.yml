@@ -708,12 +708,30 @@
         mode: '0600'
       when: ckan_sync_api_key is defined
 
-    - name: Add AVU sync crontab entry
+    - name: Add AVU sync crontab entry (curated)
       ansible.builtin.cron:
-        name: "Sync AVU metadata to CKAN"
+        name: "Sync AVU metadata to CKAN (curated)"
         minute: "0"
         user: www-data
-        job: "flock -n /tmp/ckan-sync.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --state-file /opt/ckan-sync/sync_state.json >> /var/log/ckan/sync.log 2>&1"
+        job: "flock -n /tmp/ckan-sync.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source curated --state-file /opt/ckan-sync/sync_state_curated.json >> /var/log/ckan/sync.log 2>&1"
+        cron_file: ckan-avu-sync
+      when: ckan_sync_api_key is defined
+
+    - name: Add AVU sync crontab entry (esiil)
+      ansible.builtin.cron:
+        name: "Sync AVU metadata to CKAN (esiil)"
+        minute: "5"
+        user: www-data
+        job: "flock -n /tmp/ckan-sync-esiil.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source esiil --state-file /opt/ckan-sync/sync_state_esiil.json >> /var/log/ckan/sync-esiil.log 2>&1"
+        cron_file: ckan-avu-sync
+      when: ckan_sync_api_key is defined
+
+    - name: Add AVU sync crontab entry (NCEMS)
+      ansible.builtin.cron:
+        name: "Sync AVU metadata to CKAN (NCEMS)"
+        minute: "10"
+        user: www-data
+        job: "flock -n /tmp/ckan-sync-ncems.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source ncems --state-file /opt/ckan-sync/sync_state_ncems.json >> /var/log/ckan/sync-ncems.log 2>&1"
         cron_file: ckan-avu-sync
       when: ckan_sync_api_key is defined
 
@@ -742,6 +760,8 @@
           - "  sudo systemctl status nginx"
           - "  sudo tail -f /var/log/ckan/ckan.log"
           - "  sudo tail -f /var/log/ckan/sync.log"
+          - "  sudo tail -f /var/log/ckan/sync-esiil.log"
+          - "  sudo tail -f /var/log/ckan/sync-ncems.log"
           - "======================================"
 
   handlers:
