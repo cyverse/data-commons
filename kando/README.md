@@ -195,6 +195,225 @@ You have **two ways to launch the app**:
 
 ---
 
+### Automated AVU Metadata Sync (iRODS → CKAN)
+
+#### `sync/` module
+
+The `sync/` module provides automated, incremental synchronization of iRODS collections to CKAN — including both metadata and resource (file) links. The goal is to replicate the production [dc.cyverse.org](https://dc.cyverse.org) catalog from the iRODS Data Store, so that each CKAN dataset page shows the same metadata and downloadable file links as production.
+
+#### Background: How the Existing Helpers Work
+
+Before the `sync/` module existed, Kando already had helpers for migrating datasets one at a time via the Gradio UI. Understanding these is important because the sync module reuses the same concepts:
+
+- **`de.py`** — Authenticates with the CyVerse Terrain API (`GET /terrain/token/keycloak`) and provides functions to list directories (`get_datasets`), list files within a directory (`get_files` via `/secured/filesystem/paged-directory`), and extract per-file metadata (`get_all_metadata_file`) including WebDAV download URLs.
+- **`ckan.py`** — Wraps the CKAN API for creating datasets (`package_create`), adding resource links (`resource_create`), and uploading files.
+- **`helpers/migration.py`** — Pure functions for cleaning metadata: normalizing titles into URL-safe CKAN names, mapping license strings to CKAN license IDs, extracting tags from `subject` AVUs, and building citation strings.
+- **`utils/migrate.py`** — The original migration orchestrator. For each dataset it: (1) fetches metadata from DE, (2) creates the CKAN dataset, (3) lists all files and subfolders in the collection, (4) adds each as a CKAN resource link pointing to the WebDAV URL. **This is where file links come from** — without step 4, CKAN datasets appear as empty metadata-only records.
+
+The `sync/` module was built to do the same thing as `utils/migrate.py`, but in batch, unattended, and incrementally (only syncing new or modified datasets on each run).
+
+#### How the Sync Pipeline Works
+
+The sync module uses the **CyVerse Terrain API** — the REST gateway to the iRODS-based Data Store. Here is the complete pipeline, step by step:
+
+##### Step 1: Authentication
+
+`IRODSClient` authenticates with CyVerse credentials (`DE_USERNAME` / `DE_PASSWORD`) via:
+
+```
+GET /terrain/token/keycloak
+Authorization: Basic <base64(username:password)>
+```
+
+This returns a Keycloak access token used as a Bearer token for all subsequent Terrain API requests.
+
+##### Step 2: Directory Discovery
+
+```
+GET /terrain/secured/filesystem/directory?path=<base_path>
+```
+
+Lists all subdirectories (collections) under a source path. Each source has a configured base path:
+
+| Source | iRODS Base Path | CKAN Organization |
+|--------|----------------|-------------------|
+| `curated` | `/iplant/home/shared/commons_repo/curated` | `cyverse` |
+| `esiil` | `/iplant/home/shared/esiil` | `esiil` |
+| `ncems` | `/iplant/home/shared/NCEMS/working-groups` | `ncems` |
+
+The response includes each folder's `label`, `path`, `date-created`, `date-modified`, and iRODS `id`. Deprecated directories (prefixed `_deprecated_`) are automatically skipped.
+
+##### Step 3: Public Access Filtering (ESIIL/NCEMS only)
+
+For working group folders (not curated), the sync checks whether each folder is publicly readable by making an **unauthenticated** HEAD request to the CyVerse WebDAV endpoint:
+
+```
+HEAD https://data.cyverse.org/dav/<collection_path>
+Authorization: Basic anonymous:
+```
+
+A `200` or `207` response means the folder is public. Private folders are skipped — they won't appear in the catalog.
+
+##### Step 4: AVU Metadata Retrieval
+
+For each eligible folder, the Terrain metadata endpoint returns all AVU (Attribute-Value-Unit) pairs:
+
+```
+GET /terrain/filesystem/<folder-id>/metadata
+```
+
+Response format:
+```json
+{
+  "avus": [
+    {"attr": "title", "value": "Maize Leaf Metabolome GWAS"},
+    {"attr": "datacite.creator", "value": "Shaoqun Zhou"},
+    {"attr": "description", "value": "LC-MS GWAS results..."},
+    {"attr": "subject", "value": "GWAS"},
+    {"attr": "subject", "value": "Zea mays"},
+    {"attr": "rights", "value": "ODC PDDL"},
+    {"attr": "identifier", "value": "10.25739/9dsj-kw33"}
+  ]
+}
+```
+
+Common AVU attributes and what they map to in CKAN:
+
+| AVU Attribute | CKAN Field | Notes |
+|---------------|-----------|-------|
+| `title` / `datacite.title` | `title` | Also normalized to generate `name` (URL slug) |
+| `datacite.creator` / `creator` | `author` | |
+| `description` | `notes` | CKAN's description field |
+| `subject` | `tags` | Multi-value; split on commas, special chars cleaned |
+| `rights` | `license_id` | Mapped to CKAN license: CC0, ODC-PDDL, or "not specified" |
+| `identifier` | extras: Citation | Used to build citation string with DOI |
+| `datacite.publicationyear` | extras: Citation | Included in citation string |
+| All other AVUs | `extras` | Preserved as key-value pairs |
+
+The mapping logic lives in `sync/mapping.py` — it was extracted from `helpers/migration.py` so the sync module has no dependency on Gradio or the interactive migration code.
+
+##### Step 5: File and Folder Listing (Resource Links)
+
+This is the step that makes CKAN datasets look like production. After creating/updating the dataset metadata, the sync lists the **contents** of each collection:
+
+```
+GET /terrain/secured/filesystem/paged-directory?path=<collection_path>&limit=1000
+```
+
+This returns all files and subfolders. For each item, a **CKAN resource link** is created pointing to the public WebDAV URL:
+
+```
+https://data.cyverse.org/dav-anon/iplant/home/shared/commons_repo/curated/<dataset>/<filename>
+```
+
+For example, the Maize Leaf Metabolome GWAS dataset gets these resources:
+
+| Resource Name | Format | WebDAV URL |
+|--------------|--------|------------|
+| `readme.txt` | txt | `https://data.cyverse.org/dav-anon/.../readme.txt` |
+| `MasterInventory.csv` | csv | `https://data.cyverse.org/dav-anon/.../MasterInventory.csv` |
+| `Raw_MS_Files` | folder | `https://data.cyverse.org/dav-anon/.../Raw_MS_Files` |
+| ... | ... | ... |
+
+Resources are deduplicated by URL — if a resource link already exists in CKAN, it is not re-created.
+
+##### Step 6: Incremental State Tracking
+
+The `SyncState` class maintains a JSON manifest (e.g., `sync_state_curated.json`) that records each dataset's:
+- `irods_modify_time` — last-known modification timestamp from iRODS
+- `ckan_dataset_id` — the CKAN dataset UUID
+- `last_synced` — when the sync last ran for this dataset
+
+On subsequent runs, **only new or modified datasets are synced** — unchanged datasets are skipped entirely. To force a full re-sync (e.g., after code changes), reset the state file:
+
+```bash
+echo '{"datasets": {}}' > kando/sync_state_curated.json
+```
+
+#### Comparison: What Gets Replicated vs. Production
+
+| Feature | Production (dc.cyverse.org) | Sync Module |
+|---------|---------------------------|-------------|
+| Dataset metadata (title, author, description) | From iRODS AVUs | Same — via Terrain API |
+| Tags/subjects | From iRODS AVUs | Same |
+| License | From `rights` AVU | Same mapping logic |
+| Citation with DOI | Generated from AVUs | Same — author + year + title + DOI |
+| File/folder resource links | WebDAV URLs | Same — `dav-anon` URLs |
+| CKAN organization assignment | Manual | Automatic per source config |
+| Custom extras (all other AVUs) | Preserved | Same |
+| CKAN groups | Manual | Automatic (cyverse-curated, esiil, ncems) |
+
+**Known limitations** (things that are not yet replicated):
+
+- **CKAN theming/styling** — The production site at dc.cyverse.org has custom CSS and branding. The local dev CKAN uses the default theme. This is configured in the CKAN deployment (`ckan/`), not in the sync module.
+- **Dataset images/thumbnails** — Production datasets may have custom images. The sync does not handle image uploads.
+- **Nested folder contents** — Resource links are created for the top-level files and folders in each collection, matching production behavior. The contents *within* subfolders are not individually listed (users browse into folders via WebDAV).
+- **File uploads** — Resources are linked by URL, not uploaded to CKAN storage. This is the same approach production uses — files live in the iRODS Data Store and CKAN just points to them.
+
+#### Usage
+
+```bash
+# Sync curated datasets (default)
+python -m kando.sync.sync_avu
+
+# Sync ESIIL working group datasets
+python -m kando.sync.sync_avu --source esiil
+
+# Sync NCEMS working group datasets
+python -m kando.sync.sync_avu --source ncems
+
+# Sync all sources
+python -m kando.sync.sync_avu --source all
+
+# Preview changes without writing to CKAN
+python -m kando.sync.sync_avu --source esiil --dry-run
+```
+
+#### Required Environment Variables
+
+Add these to `kando/.env`:
+
+```bash
+# CyVerse credentials (for Terrain API authentication)
+DE_USERNAME=your_cyverse_username
+DE_PASSWORD=your_cyverse_password
+
+# CKAN target instance
+CKAN_URL=http://localhost:5000       # local dev
+CKAN_API_KEY=your_ckan_api_key       # from CKAN admin user
+
+# Terrain API (defaults shown — override if needed)
+TERRAIN_URL=https://de.cyverse.org/terrain
+WEB_DAV_URL=https://data.cyverse.org/dav-anon
+```
+
+#### Module Files
+
+| File | Purpose |
+|------|---------|
+| `sync/sync_avu.py` | Main orchestrator — CLI entry point, source configuration, sync loop, resource linking |
+| `sync/irods_client.py` | Terrain API client — auth, directory listing, file listing, AVU retrieval, public access checks |
+| `sync/mapping.py` | Pure functions to transform AVU metadata dicts into CKAN dataset dicts (extracted from `helpers/migration.py`) |
+| `sync/state.py` | JSON state manifest for incremental sync tracking |
+
+#### Relationship to Existing Helper Files
+
+The `sync/` module was designed to complement, not replace, the existing Kando helpers:
+
+```
+Existing helpers (interactive, Gradio UI):
+  de.py → utils/migrate.py → ckan.py
+  └── One dataset at a time, user-driven
+
+Sync module (automated, CLI):
+  sync/irods_client.py → sync/mapping.py → sync/sync_avu.py
+  └── All datasets in batch, incremental, unattended
+```
+
+Both paths use the same Terrain API endpoints and produce the same CKAN result. The sync module's `irods_client.py` is functionally equivalent to `de.py` but with a cleaner interface (no global state, explicit auth). The sync module's `mapping.py` was extracted from `helpers/migration.py` to remove the Gradio dependency. The resource-linking logic in `sync_resources()` mirrors what `utils/migrate.py` does in its file loop (lines 88-126).
+
+---
+
 ### Cloud Buckets Integration
 
 #### 11. `aws/aws_main.py`

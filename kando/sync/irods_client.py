@@ -165,6 +165,46 @@ class IRODSClient:
 
         return metadata_dict
 
+    def list_collection_contents(self, path: str) -> dict:
+        """
+        List files and subfolders in a collection via the paged-directory endpoint.
+
+        Returns:
+            Dict with 'files' and 'folders' lists. Each entry has:
+            'name', 'path', 'modify_time', 'create_time', 'type' ('file' or 'folder').
+        """
+        url = f"{self.base_url}/secured/filesystem/paged-directory"
+        params = {"path": path, "limit": 1000}
+        resp = self.session.get(url, params=params, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+
+        files = []
+        for f in data.get("files", []):
+            label = f.get("label", "")
+            ext = label.rsplit(".", 1)[-1] if "." in label else ""
+            files.append({
+                "name": label,
+                "path": f.get("path", ""),
+                "modify_time": _ms_to_iso(f.get("date-modified", 0)),
+                "create_time": _ms_to_iso(f.get("date-created", 0)),
+                "type": "file",
+                "format": ext,
+            })
+
+        folders = []
+        for f in data.get("folders", []):
+            folders.append({
+                "name": f.get("label", ""),
+                "path": f.get("path", ""),
+                "modify_time": _ms_to_iso(f.get("date-modified", 0)),
+                "create_time": _ms_to_iso(f.get("date-created", 0)),
+                "type": "folder",
+                "format": "folder",
+            })
+
+        return {"files": files, "folders": folders}
+
     def get_collection_info(self, path: str) -> dict:
         """Get stat info for a collection path."""
         url = f"{self.base_url}/secured/filesystem/stat"

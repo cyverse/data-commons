@@ -40,14 +40,14 @@ SOURCES = {
     },
     "esiil": {
         "base_path": "/iplant/home/shared/esiil",
-        "owner_org": "cyverse",
+        "owner_org": "esiil",
         "groups": [{"name": "esiil"}],
         "state_file": "sync_state_esiil.json",
         "filter_public": True,
     },
     "ncems": {
         "base_path": "/iplant/home/shared/NCEMS/working-groups",
-        "owner_org": "cyverse",
+        "owner_org": "ncems",
         "groups": [{"name": "ncems"}],
         "state_file": "sync_state_ncems.json",
         "filter_public": True,
@@ -89,6 +89,64 @@ class CKANSyncClient:
         url = f"{self.base_url}/api/3/action/package_update"
         resp = self.session.post(url, data=json.dumps(data), timeout=15)
         return resp.json()
+
+    def get_dataset_resources(self, dataset_id: str) -> list:
+        """Get the list of existing resources for a dataset."""
+        dataset = self.get_dataset_by_name(dataset_id)
+        if dataset:
+            return dataset.get("resources", [])
+        return []
+
+    def create_resource(self, data: dict) -> dict:
+        url = f"{self.base_url}/api/3/action/resource_create"
+        resp = self.session.post(url, data=json.dumps(data), timeout=15)
+        return resp.json()
+
+
+WEBDAV_BASE = os.getenv("WEB_DAV_URL", "https://data.cyverse.org/dav-anon")
+
+
+def sync_resources(
+    irods: "IRODSClient",
+    ckan: CKANSyncClient,
+    dataset_id: str,
+    collection_path: str,
+) -> int:
+    """
+    Sync files and subfolders from an iRODS collection as CKAN resource links.
+
+    Skips resources that already exist (matched by URL) to avoid duplicates.
+
+    Returns:
+        Number of resources created.
+    """
+    existing = ckan.get_dataset_resources(dataset_id)
+    existing_urls = {r.get("url", "") for r in existing}
+
+    contents = irods.list_collection_contents(collection_path)
+    created = 0
+
+    for item in contents["files"] + contents["folders"]:
+        resource_url = f"{WEBDAV_BASE}{item['path']}"
+        if resource_url in existing_urls:
+            continue
+
+        resource_data = {
+            "package_id": dataset_id,
+            "name": item["name"],
+            "url": resource_url,
+            "format": item["format"],
+            "Date created in discovery environment": item["create_time"],
+            "Date last modified in discovery environment": item["modify_time"],
+        }
+        result = ckan.create_resource(resource_data)
+        if result.get("success"):
+            created += 1
+            logger.debug("Added resource: %s", item["name"])
+        else:
+            logger.warning("Failed to add resource %s: %s", item["name"], result.get("error"))
+
+    return created
 
 
 def sync_source(
@@ -219,6 +277,15 @@ def sync_source(
                         if result.get("success"):
                             ckan_id = result["result"]["id"]
                 stats["updated"] += 1
+
+            # Sync resource links (files and subfolders)
+            if ckan_id:
+                try:
+                    num_resources = sync_resources(irods, ckan, ckan_id, path)
+                    if num_resources:
+                        logger.info("Added %d resources to %s", num_resources, dirname)
+                except Exception as res_err:
+                    logger.warning("Resource sync failed for %s: %s", dirname, res_err)
 
             irods_info = {"modify_time": modify_time}
             if ckan_id:
