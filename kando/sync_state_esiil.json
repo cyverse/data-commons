@@ -1,1 +1,45 @@
-{"datasets": {}}
+{
+  "datasets": {
+    "ai_for_natural_methane_working_group": {
+      "irods_modify_time": "2025-08-28 07:44:11",
+      "ckan_dataset_id": "22dde141-3adf-418e-8acc-e27809c5a2f6",
+      "last_synced": "2026-03-24T01:10:27.142281+00:00"
+    },
+    "BioViewPoint": {
+      "irods_modify_time": "2024-09-30 10:09:58",
+      "ckan_dataset_id": "263cc663-5202-4bfe-a6a8-0e32cc88b39c",
+      "last_synced": "2026-03-24T01:10:28.564138+00:00"
+    },
+    "EnviroLLM": {
+      "irods_modify_time": "2025-06-06 09:18:59",
+      "ckan_dataset_id": "11d01900-ad0b-403c-b943-bf86ad0fd01f",
+      "last_synced": "2026-03-24T01:10:31.869547+00:00"
+    },
+    "fungal_dispersal": {
+      "irods_modify_time": "2024-10-10 10:39:58",
+      "ckan_dataset_id": "26816bd4-dec2-4ad7-bfa2-e9f941fb9628",
+      "last_synced": "2026-03-24T01:10:33.432143+00:00"
+    },
+    "macrophenology": {
+      "irods_modify_time": "2025-09-10 14:30:48",
+      "ckan_dataset_id": "0595c2bd-e578-434e-88bc-001e9e4a8d04",
+      "last_synced": "2026-03-24T01:10:41.737842+00:00"
+    },
+    "Maka_Sitomniya": {
+      "irods_modify_time": "2025-05-03 10:14:16",
+      "ckan_dataset_id": "c5f01135-dd18-4683-ab22-f7f1d08a0645",
+      "last_synced": "2026-03-24T01:10:42.839451+00:00"
+    },
+    "popClimVar": {
+      "irods_modify_time": "2025-06-06 09:20:02",
+      "ckan_dataset_id": "eaab79bb-1496-4766-856a-797d42b8d513",
+      "last_synced": "2026-03-24T01:10:44.490899+00:00"
+    },
+    "verdePheno": {
+      "irods_modify_time": "2025-06-06 09:20:48",
+      "ckan_dataset_id": "3993f7dc-5e4d-4a32-bd23-64ca6e011b4b",
+      "last_synced": "2026-03-24T01:10:50.020380+00:00"
+    }
+  },
+  "last_full_sync": "2026-03-24T01:10:50.020417+00:00"
+}
