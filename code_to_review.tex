@@ -1,0 +1,229 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{fontenc}
+\usepackage{inputenc}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!60!black,
+}
+
+\definecolor{codebg}{gray}{0.95}
+\definecolor{alertbg}{RGB}{255, 248, 235}
+\definecolor{alertborder}{RGB}{230, 150, 0}
+\definecolor{okbg}{RGB}{240, 250, 240}
+\definecolor{okborder}{RGB}{60, 160, 60}
+\definecolor{highred}{RGB}{180, 30, 30}
+\definecolor{medorange}{RGB}{180, 100, 0}
+\definecolor{lowgreen}{RGB}{40, 130, 40}
+
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    framesep=4pt,
+    rulecolor=\color{gray!50},
+    xleftmargin=8pt,
+    xrightmargin=8pt,
+    aboveskip=6pt,
+    belowskip=6pt,
+}
+
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{}
+
+\newmdenv[
+    backgroundcolor=alertbg,
+    linecolor=alertborder,
+    linewidth=2pt,
+    leftline=true,
+    rightline=false,
+    topline=false,
+    bottomline=false,
+    innerleftmargin=10pt,
+    innerrightmargin=8pt,
+    innertopmargin=6pt,
+    innerbottommargin=6pt,
+]{alertbox}
+
+\newmdenv[
+    backgroundcolor=okbg,
+    linecolor=okborder,
+    linewidth=2pt,
+    leftline=true,
+    rightline=false,
+    topline=false,
+    bottomline=false,
+    innerleftmargin=10pt,
+    innerrightmargin=8pt,
+    innertopmargin=6pt,
+    innerbottommargin=6pt,
+]{okbox}
+
+\newcommand{\priority}[2]{%
+    \textbf{\textcolor{#1}{#2}}%
+}
+
+\begin{document}
+
+\begin{center}
+    {\LARGE\bfseries AVU Sync Code Review}\\[4pt]
+    {\large What Needs Human Attention Before Merging}\\[8pt]
+    {\small Branch: \texttt{feature/avu-sync} \quad|\quad Generated: 2026-04-01}
+\end{center}
+
+\vspace{4pt}
+\hrule
+\vspace{12pt}
+
+\section{Context}
+
+The \texttt{feature/avu-sync} branch (AI-written) added \texttt{kando/sync/} --- a module for
+automatically syncing iRODS AVU metadata to CKAN on a scheduled basis. The metadata mapping in
+\texttt{kando/sync/mapping.py} is a refactor of the production logic in
+\texttt{kando/helpers/migration.py}. This document records what has been verified correct and
+what requires careful human review before the branch is merged or deployed.
+
+\section{Already Verified Correct (matches \texttt{de.py})}
+
+\begin{okbox}
+\texttt{kando/sync/irods\_client.py} was cross-checked line-by-line against the production
+\texttt{kando/de.py}. All API patterns match.
+\end{okbox}
+
+\vspace{6pt}
+
+\begin{itemize}[nosep, leftmargin=1.5em]
+    \item \textbf{Auth endpoint:} \texttt{/token/keycloak} --- identical
+    \item \textbf{Directory listing:} \texttt{/secured/filesystem/directory?path=...} returns \texttt{\{"folders": [...]\}} --- identical
+    \item \textbf{Metadata endpoint:} \texttt{/filesystem/\{id\}/metadata} --- identical
+    \item \textbf{AVU parsing:} \texttt{avu['attr']} / \texttt{avu['value']} loop --- identical
+    \item \textbf{Date format:} \texttt{strftime('\%Y-\%m-\%d \%H:\%M:\%S')} --- identical
+    \item \textbf{Env vars:} \texttt{DE\_USERNAME}, \texttt{DE\_PASSWORD}, \texttt{TERRAIN\_URL} --- already used by \texttt{de.py}
+\end{itemize}
+
+\vspace{6pt}
+
+The metadata field mapping in \texttt{mapping.py} is functionally equivalent to \texttt{migration.py}:
+same key fallback order, same license logic, same tag normalization, same \texttt{dont\_include} set.
+The AVU sync is actually cleaner in two minor ways: \texttt{get\_description()} handles list values by
+joining them (instead of returning a raw Python list), and \texttt{get\_extras()} is more defensive
+about missing date fields.
+
+\section{Issues Requiring Human Review}
+
+\subsection{\priority{highred}{[HIGH]}\quad \texttt{mapping.py:157} --- \texttt{create\_citation()} called unconditionally}
+
+\begin{alertbox}
+\textbf{Risk:} Datasets without an author or publication year will crash silently during sync.
+\end{alertbox}
+
+\texttt{get\_extras()} always calls \texttt{create\_citation()}, which in turn calls \texttt{get\_author()}
+and \texttt{get\_publication\_year()}. Both raise \texttt{KeyError} if their respective fields are absent
+from the AVU metadata.
+
+\texttt{sync\_avu.py} only guards against a missing title (lines 104--109):
+
+\begin{lstlisting}[language=Python]
+try:
+    get_title(avus)
+except KeyError:
+    logger.warning("Skipping %s: no title in metadata", dirname)
+    stats["skipped"] += 1
+    continue
+\end{lstlisting}
+
+A dataset with a title but no \texttt{datacite.creator}/\texttt{creator} or no publication year will
+crash inside \texttt{map\_avus\_to\_ckan()} at the \texttt{get\_extras()} call. The outer
+\texttt{except Exception} on line~179 catches it and logs an error, but the message
+(\texttt{"No creator found in metadata"}) gives no context about which dataset failed or why.
+
+\textbf{What to verify:} Do all curated datasets on prod have author and publication year?
+Run a check against the Terrain API before deploying. Consider either:
+\begin{itemize}[nosep, leftmargin=2em]
+    \item Adding the same \texttt{try/except KeyError} guard for author and year in \texttt{sync\_avu.py}, or
+    \item Wrapping \texttt{create\_citation()} in a \texttt{try/except} inside \texttt{get\_extras()} and falling back to an empty string.
+\end{itemize}
+
+\subsection{\priority{medorange}{[MEDIUM]}\quad \texttt{state.py:12} --- Default state file path}
+
+\begin{lstlisting}[language=Python]
+DEFAULT_STATE_PATH = os.path.join(os.path.dirname(__file__), "..", "sync_state.json")
+\end{lstlisting}
+
+This resolves to \texttt{kando/sync\_state.json}. The file accumulates CKAN dataset IDs and
+iRODS timestamps for every curated dataset and will grow over time.
+
+\textbf{What to verify:} Is \texttt{kando/sync\_state.json} listed in \texttt{.gitignore}?
+It should not be committed to the repository.
+
+\subsection{\priority{medorange}{[MEDIUM]}\quad \texttt{sync\_avu.py:120--172} --- Create/update orchestration logic}
+
+This is the most complex block in the AI-written code. Read it carefully end-to-end.
+
+\textbf{Create path (lines 121--152):}
+\begin{itemize}[nosep, leftmargin=2em]
+    \item If a dataset name already exists in CKAN, it updates rather than creates. Correct.
+    \item If a name collision occurs on \texttt{package\_create}, it retries with a DOI suffix appended to the name. Verify the suffix truncation logic (\texttt{name[:80] + "\_" + suffix[:19]}) won't produce invalid CKAN names.
+    \item \texttt{stats["created"] += 1} on line~152 is reached even when the ``already exists, updating'' path (lines 123--127) was taken. The created count will be inflated for re-syncs.
+\end{itemize}
+
+\textbf{Update path (lines 153--172):}
+\begin{itemize}[nosep, leftmargin=2em]
+    \item If \texttt{state.get\_ckan\_id()} returns \texttt{None} (lost state), the code tries to find the dataset by name, then falls back to creating a new one.
+    \item \textbf{Walk this path manually} to confirm it cannot create a duplicate dataset when the dataset already exists in CKAN under the same name.
+    \item \texttt{stats["updated"] += 1} on line~172 is always hit, even if a new dataset was created. Minor, but misleading.
+\end{itemize}
+
+\textbf{State tracking:} \texttt{state.mark\_synced()} is called at line~177 with a \texttt{ckan\_id}
+guard. This covers all successful paths correctly.
+
+\subsection{\priority{lowgreen}{[LOW]}\quad \texttt{example.env} --- Missing env vars for the sync}
+
+\texttt{DE\_USERNAME} and \texttt{DE\_PASSWORD} are required by both the existing \texttt{de.py} and
+the new \texttt{irods\_client.py}, but are absent from \texttt{kando/example.env}. This is a
+pre-existing documentation gap, but the sync makes it operationally important.
+
+\textbf{Add to \texttt{kando/example.env}:}
+
+\begin{lstlisting}
+DE_USERNAME=<cyverse username>
+DE_PASSWORD=<cyverse password>
+\end{lstlisting}
+
+\section{Metadata Formatting Verdict}
+
+The two implementations produce equivalent CKAN dataset output for curated data. The only
+structural difference is that \texttt{map\_avus\_to\_ckan()} in \texttt{mapping.py} omits the
+\texttt{id} and \texttt{image\_display\_url} fields from the groups dict that
+\texttt{migration.py} includes. This is functionally harmless --- CKAN resolves group
+membership by \texttt{name}, not \texttt{id}.
+
+\section{Files to Read}
+
+\vspace{4pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{File} & \textbf{Priority} & \textbf{Why} \\
+\midrule
+\texttt{kando/sync/mapping.py:146--171} & \priority{highred}{High} & \texttt{create\_citation()} crash risk \\
+\texttt{kando/sync/sync\_avu.py:99--172} & \priority{highred}{High} & create/update logic, stats accuracy \\
+\texttt{kando/sync/state.py:12} & \priority{medorange}{Medium} & default path, check \texttt{.gitignore} \\
+\texttt{kando/sync/irods\_client.py} & \priority{lowgreen}{Low} & already verified against \texttt{de.py} \\
+\texttt{kando/example.env} & \priority{lowgreen}{Low} & add \texttt{DE\_USERNAME}/\texttt{DE\_PASSWORD} \\
+\bottomrule
+\end{tabular}
+
+\end{document}

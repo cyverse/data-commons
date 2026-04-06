@@ -12,3 +12,4 @@ gradio
 migration
 */myenv
 */.env
+kando/sync_state.json

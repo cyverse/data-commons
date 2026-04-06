@@ -154,7 +154,10 @@ def get_extras(dataset_metadata: dict) -> list:
         'publicationYear', 'Creator', 'Title', 'Identifier', 'version',
     }
 
-    extras.append({'key': 'Citation', 'value': create_citation(dataset_metadata)})
+    try:
+        extras.append({'key': 'Citation', 'value': create_citation(dataset_metadata)})
+    except KeyError:
+        pass
 
     if 'date_created' in dataset_metadata:
         extras.append({'key': 'Date created in discovery environment', 'value': dataset_metadata['date_created']})

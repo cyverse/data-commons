@@ -165,45 +165,29 @@ class IRODSClient:
 
         return metadata_dict
 
-    def list_collection_contents(self, path: str) -> dict:
+    def list_files(self, path: str) -> dict:
         """
-        List files and subfolders in a collection via the paged-directory endpoint.
+        List files and subfolders in a collection path.
+
+        Mirrors kando/de.py:get_files() — first fetches total count, then
+        fetches all files in one request. Folders are always returned in full.
 
         Returns:
-            Dict with 'files' and 'folders' lists. Each entry has:
-            'name', 'path', 'modify_time', 'create_time', 'type' ('file' or 'folder').
+            Dict with 'total', 'files', and 'folders' keys, matching the
+            Terrain paged-directory response format.
         """
         url = f"{self.base_url}/secured/filesystem/paged-directory"
-        params = {"path": path, "limit": 1000}
-        resp = self.session.get(url, params=params, timeout=60)
+        resp = self.session.get(url, params={"path": path, "limit": 1}, timeout=30)
         resp.raise_for_status()
         data = resp.json()
 
-        files = []
-        for f in data.get("files", []):
-            label = f.get("label", "")
-            ext = label.rsplit(".", 1)[-1] if "." in label else ""
-            files.append({
-                "name": label,
-                "path": f.get("path", ""),
-                "modify_time": _ms_to_iso(f.get("date-modified", 0)),
-                "create_time": _ms_to_iso(f.get("date-created", 0)),
-                "type": "file",
-                "format": ext,
-            })
+        total = data.get("total", 0)
+        if total <= 1:
+            return data
 
-        folders = []
-        for f in data.get("folders", []):
-            folders.append({
-                "name": f.get("label", ""),
-                "path": f.get("path", ""),
-                "modify_time": _ms_to_iso(f.get("date-modified", 0)),
-                "create_time": _ms_to_iso(f.get("date-created", 0)),
-                "type": "folder",
-                "format": "folder",
-            })
-
-        return {"files": files, "folders": folders}
+        resp = self.session.get(url, params={"path": path, "limit": total}, timeout=60)
+        resp.raise_for_status()
+        return resp.json()
 
     def get_collection_info(self, path: str) -> dict:
         """Get stat info for a collection path."""

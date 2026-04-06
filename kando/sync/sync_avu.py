@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 
 from kando.sync.irods_client import IRODSClient
 from kando.sync.mapping import map_avus_to_ckan, get_title
+from kando.sync.resources import get_resources_to_add
 from kando.sync.state import SyncState
 
 load_dotenv()
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 CKAN_URL = os.getenv("CKAN_URL")
 CKAN_API_KEY = os.getenv("CKAN_API_KEY")
+WEB_DAV_URL = os.getenv("WEB_DAV_URL")
 
 # Source definitions: base_path, owner_org, ckan groups, state file, filter_public
 SOURCES = {
@@ -90,63 +92,65 @@ class CKANSyncClient:
         resp = self.session.post(url, data=json.dumps(data), timeout=15)
         return resp.json()
 
-    def get_dataset_resources(self, dataset_id: str) -> list:
-        """Get the list of existing resources for a dataset."""
+    def get_resources(self, dataset_id: str) -> list:
+        """Return the resources list for a dataset (empty list on failure)."""
         dataset = self.get_dataset_by_name(dataset_id)
-        if dataset:
-            return dataset.get("resources", [])
-        return []
+        return dataset.get("resources", []) if dataset else []
 
-    def create_resource(self, data: dict) -> dict:
+    def add_resource_link(self, data: dict) -> dict:
+        """
+        Add a URL-linked resource to a dataset.
+        Mirrors kando/ckan.py:add_resource_link().
+        """
         url = f"{self.base_url}/api/3/action/resource_create"
-        resp = self.session.post(url, data=json.dumps(data), timeout=15)
+        resp = self.session.post(url, json=data, timeout=30)
         return resp.json()
 
 
-WEBDAV_BASE = os.getenv("WEB_DAV_URL", "https://data.cyverse.org/dav-anon")
-
-
-def sync_resources(
-    irods: "IRODSClient",
+def sync_resources_for_dataset(
     ckan: CKANSyncClient,
+    irods: IRODSClient,
     dataset_id: str,
-    collection_path: str,
-) -> int:
+    de_path: str,
+) -> tuple[int, int]:
     """
-    Sync files and subfolders from an iRODS collection as CKAN resource links.
+    Sync file/folder resources for one dataset. Returns (added, errors).
 
-    Skips resources that already exist (matched by URL) to avoid duplicates.
-
-    Returns:
-        Number of resources created.
+    Fetches the iRODS file listing and the existing CKAN resources, then adds
+    only files not already present — matching the behaviour of
+    kando/utils/migrate.py but idempotent across repeated runs.
     """
-    existing = ckan.get_dataset_resources(dataset_id)
-    existing_urls = {r.get("url", "") for r in existing}
+    if not WEB_DAV_URL:
+        logger.warning("WEB_DAV_URL not set — skipping resource sync")
+        return 0, 0
 
-    contents = irods.list_collection_contents(collection_path)
-    created = 0
+    existing_names = {r["name"] for r in ckan.get_resources(dataset_id)}
 
-    for item in contents["files"] + contents["folders"]:
-        resource_url = f"{WEBDAV_BASE}{item['path']}"
-        if resource_url in existing_urls:
-            continue
+    try:
+        listing = irods.list_files(de_path)
+    except Exception as e:
+        logger.error("Failed to list files at %s: %s", de_path, e)
+        return 0, 1
 
-        resource_data = {
-            "package_id": dataset_id,
-            "name": item["name"],
-            "url": resource_url,
-            "format": item["format"],
-            "Date created in discovery environment": item["create_time"],
-            "Date last modified in discovery environment": item["modify_time"],
-        }
-        result = ckan.create_resource(resource_data)
+    to_add = get_resources_to_add(listing, existing_names, dataset_id, WEB_DAV_URL)
+    if not to_add:
+        return 0, 0
+
+    added, errors = 0, 0
+    for resource_data in to_add:
+        result = ckan.add_resource_link(resource_data)
         if result.get("success"):
-            created += 1
-            logger.debug("Added resource: %s", item["name"])
+            logger.info("  + resource: %s", resource_data["name"])
+            added += 1
         else:
-            logger.warning("Failed to add resource %s: %s", item["name"], result.get("error"))
+            logger.error(
+                "  ! resource failed (%s): %s",
+                resource_data["name"],
+                result.get("error"),
+            )
+            errors += 1
 
-    return created
+    return added, errors
 
 
 def sync_source(
@@ -278,15 +282,17 @@ def sync_source(
                             ckan_id = result["result"]["id"]
                 stats["updated"] += 1
 
-            # Sync resource links (files and subfolders)
+            # Sync file resources (adds new files, skips already-present ones)
             if ckan_id:
-                try:
-                    num_resources = sync_resources(irods, ckan, ckan_id, path)
-                    if num_resources:
-                        logger.info("Added %d resources to %s", num_resources, dirname)
-                except Exception as res_err:
-                    logger.warning("Resource sync failed for %s: %s", dirname, res_err)
+                r_added, r_errors = sync_resources_for_dataset(
+                    ckan, irods, ckan_id, path
+                )
+                if r_added:
+                    logger.info("Resources synced: +%d added", r_added)
+                if r_errors:
+                    stats["errors"] += r_errors
 
+            # Update state
             irods_info = {"modify_time": modify_time}
             if ckan_id:
                 state.mark_synced(dirname, irods_info, ckan_id)
