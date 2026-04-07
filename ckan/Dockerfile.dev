@@ -1,0 +1,12 @@
+FROM --platform=linux/amd64 ckan/ckan-dev:2.11
+
+# Patch the ckan.ini template to use Docker service hostnames
+# Remove datastore plugin (not needed for local dev, requires separate DB)
+RUN ckan config-tool $CKAN_INI \
+    "sqlalchemy.url = postgresql://ckan:ckan@db/ckan" \
+    "solr_url = http://solr:8983/solr/ckan" \
+    "ckan.redis.url = redis://redis:6379/0" \
+    "ckan.site_url = http://localhost:5000" \
+    "ckan.devserver.host = 0.0.0.0" \
+    "WTF_CSRF_ENABLED = false" \
+    "ckan.plugins = image_view text_view datatables_view envvars"

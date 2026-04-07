@@ -1,0 +1,41 @@
+name: Sync AVU Metadata to CKAN
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6AM UTC (backup)
+  workflow_dispatch:       # Manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Run AVU sync
+        run: python -m kando.sync.sync_avu
+        env:
+          CKAN_URL: ${{ secrets.CKAN_URL }}
+          CKAN_API_KEY: ${{ secrets.CKAN_API_KEY }}
+          DE_USERNAME: ${{ secrets.DE_USERNAME }}
+          DE_PASSWORD: ${{ secrets.DE_PASSWORD }}
+          TERRAIN_URL: ${{ secrets.TERRAIN_URL }}
+
+      - name: Commit state changes
+        env:
+          GIT_AUTHOR_NAME: "github-actions[bot]"
+          GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
+          GIT_COMMITTER_NAME: "github-actions[bot]"
+          GIT_COMMITTER_EMAIL: "github-actions[bot]@users.noreply.github.com"
+        run: |
+          git add kando/sync_state.json
+          git diff --staged --quiet || git commit -m "Update sync state" && git push
