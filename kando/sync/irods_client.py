@@ -181,7 +181,7 @@ class IRODSClient:
         resp.raise_for_status()
         data = resp.json()
 
-        total = data.get("total", 0)
+        total = data.get("total") or 0
         if total <= 1:
             return data
 
