@@ -364,6 +364,12 @@
         virtualenv: "{{ ckan_venv }}"
         state: present
 
+    - name: Install gunicorn in CKAN virtual environment
+      ansible.builtin.pip:
+        name: gunicorn
+        virtualenv: "{{ ckan_venv }}"
+        state: present
+
     - name: Generate session secret
       ansible.builtin.shell: >
         python3 -c 'import os, binascii; print(binascii.hexlify(os.urandom(32)).decode())'
@@ -470,6 +476,21 @@
         mode: '0640'
       notify: Restart CKAN
 
+    - name: Create CKAN WSGI entry point for gunicorn
+      ansible.builtin.copy:
+        dest: /etc/ckan/default/wsgi.py
+        content: |
+          import os
+          os.environ["CKAN_INI"] = "/etc/ckan/default/ckan.ini"
+          from ckan.config.middleware import make_app
+          from ckan.cli import load_config
+          config = load_config("/etc/ckan/default/ckan.ini")
+          application = make_app(config)
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      notify: Restart CKAN
+
     - name: Check if CKAN database is already initialized
       ansible.builtin.shell: |
         cd {{ ckan_venv }}
@@ -532,12 +553,11 @@
         dest: /etc/supervisor/conf.d/ckan.conf
         content: |
           [program:ckan]
-          command={{ ckan_venv }}/bin/ckan -c /etc/ckan/default/ckan.ini run --host 0.0.0.0 --port {{ ckan_port }}
+          command={{ ckan_venv }}/bin/gunicorn --workers 9 --timeout 120 --bind {{ ckan_bind_host }}:{{ ckan_port }} --env CKAN_INI=/etc/ckan/default/ckan.ini --access-logfile /var/log/ckan/ckan-access.log --error-logfile /var/log/ckan/ckan.error.log --chdir /etc/ckan/default wsgi:application
           autostart=true
           autorestart=true
           redirect_stderr=true
           stdout_logfile=/var/log/ckan/ckan.log
-          stderr_logfile=/var/log/ckan/ckan.error.log
           user=www-data
           environment=CKAN_INI="/etc/ckan/default/ckan.ini"
         mode: '0644'
@@ -700,6 +720,7 @@
           CKAN_URL=http://127.0.0.1:{{ ckan_port }}
           CKAN_API_KEY={{ ckan_sync_api_key }}
           TERRAIN_URL=https://de.cyverse.org/terrain
+          WEB_DAV_URL=https://data.cyverse.org/dav-anon
           DE_USERNAME={{ de_sync_username }}
           DE_PASSWORD={{ de_sync_password }}
         dest: /opt/ckan-sync/.env
@@ -713,7 +734,7 @@
         name: "Sync AVU metadata to CKAN (curated)"
         minute: "0"
         user: www-data
-        job: "flock -n /tmp/ckan-sync.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source curated --state-file /opt/ckan-sync/sync_state_curated.json >> /var/log/ckan/sync.log 2>&1"
+        job: "cd /opt/ckan-sync && flock -n /tmp/ckan-sync.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source curated --state-file /opt/ckan-sync/sync_state_curated.json >> /var/log/ckan/sync.log 2>&1"
         cron_file: ckan-avu-sync
       when: ckan_sync_api_key is defined
 
@@ -722,7 +743,7 @@
         name: "Sync AVU metadata to CKAN (esiil)"
         minute: "5"
         user: www-data
-        job: "flock -n /tmp/ckan-sync-esiil.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source esiil --state-file /opt/ckan-sync/sync_state_esiil.json >> /var/log/ckan/sync-esiil.log 2>&1"
+        job: "cd /opt/ckan-sync && flock -n /tmp/ckan-sync-esiil.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source esiil --state-file /opt/ckan-sync/sync_state_esiil.json >> /var/log/ckan/sync-esiil.log 2>&1"
         cron_file: ckan-avu-sync
       when: ckan_sync_api_key is defined
 
@@ -731,7 +752,7 @@
         name: "Sync AVU metadata to CKAN (NCEMS)"
         minute: "10"
         user: www-data
-        job: "flock -n /tmp/ckan-sync-ncems.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source ncems --state-file /opt/ckan-sync/sync_state_ncems.json >> /var/log/ckan/sync-ncems.log 2>&1"
+        job: "cd /opt/ckan-sync && flock -n /tmp/ckan-sync-ncems.lock /opt/ckan-sync/venv/bin/python -m kando.sync.sync_avu --source ncems --state-file /opt/ckan-sync/sync_state_ncems.json >> /var/log/ckan/sync-ncems.log 2>&1"
         cron_file: ckan-avu-sync
       when: ckan_sync_api_key is defined
 
