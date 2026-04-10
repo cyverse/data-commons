@@ -413,6 +413,9 @@
           ## Plugins - OIDC PKCE enabled
           ckan.plugins = stats text_view image_view activity oidc_pkce
 
+          ## Custom template overrides
+          extra_template_paths = /etc/ckan/default/custom_templates
+
           ## Storage Settings
           ckan.storage_path = {{ ckan_storage_path }}
 
@@ -474,6 +477,15 @@
         owner: www-data
         group: www-data
         mode: '0640'
+      notify: Restart CKAN
+
+    - name: Copy custom CKAN template overrides
+      ansible.builtin.copy:
+        src: templates/package/
+        dest: /etc/ckan/default/custom_templates/package/
+        owner: www-data
+        group: www-data
+        mode: '0644'
       notify: Restart CKAN
 
     - name: Create CKAN WSGI entry point for gunicorn

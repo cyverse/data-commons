@@ -31,7 +31,7 @@ CURATED_PATH = "/iplant/home/shared/commons_repo/curated"
 def _ms_to_iso(ms) -> str:
     """Convert milliseconds since epoch to ISO datetime string."""
     try:
-        return datetime.fromtimestamp(int(ms) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+        return datetime.utcfromtimestamp(int(ms) / 1000).strftime('%Y-%m-%dT%H:%M:%SZ')
     except (ValueError, TypeError, OSError):
         return str(ms)
 

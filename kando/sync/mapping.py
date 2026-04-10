@@ -160,9 +160,9 @@ def get_extras(dataset_metadata: dict) -> list:
         pass
 
     if 'date_created' in dataset_metadata:
-        extras.append({'key': 'Date created in discovery environment', 'value': dataset_metadata['date_created']})
+        extras.append({'key': 'de_created_date', 'value': dataset_metadata['date_created']})
     if 'date_modified' in dataset_metadata:
-        extras.append({'key': 'Date last modified in discovery environment', 'value': dataset_metadata['date_modified']})
+        extras.append({'key': 'de_modified_date', 'value': dataset_metadata['date_modified']})
 
     for key, value in dataset_metadata.items():
         if key not in dont_include:

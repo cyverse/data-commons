@@ -17,3 +17,13 @@
 
 
 community.postgresql
+
+## Custom Template Overrides
+
+CKAN UI customizations live in `ckan/templates/` and follow CKAN's template inheritance structure. The Ansible playbook copies these to `/etc/ckan/default/custom_templates/` on the server and configures `extra_template_paths` in `ckan.ini`.
+
+- **To add a customization**: Create the override file under `ckan/templates/` matching CKAN's directory structure (e.g., `package/search.html`) and use `{% ckan_extends %}` to inherit the base template. Rerun the playbook.
+- **To undo a customization**: Delete the override file from `ckan/templates/` and rerun the playbook. CKAN falls back to its default template automatically.
+
+Current overrides:
+- `templates/package/search.html` — Adds DE date sort options (Date Created/Modified in Discovery Environment) to the dataset search dropdown.
