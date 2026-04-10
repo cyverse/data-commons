@@ -553,7 +553,7 @@
         dest: /etc/supervisor/conf.d/ckan.conf
         content: |
           [program:ckan]
-          command={{ ckan_venv }}/bin/gunicorn --workers 9 --timeout 120 --bind {{ ckan_bind_host }}:{{ ckan_port }} --env CKAN_INI=/etc/ckan/default/ckan.ini --access-logfile /var/log/ckan/ckan-access.log --error-logfile /var/log/ckan/ckan.error.log --chdir /etc/ckan/default wsgi:application
+          command={{ ckan_venv }}/bin/gunicorn --workers 9 --timeout 300 --bind {{ ckan_bind_host }}:{{ ckan_port }} --env CKAN_INI=/etc/ckan/default/ckan.ini --access-logfile /var/log/ckan/ckan-access.log --error-logfile /var/log/ckan/ckan.error.log --chdir /etc/ckan/default wsgi:application
           autostart=true
           autorestart=true
           redirect_stderr=true

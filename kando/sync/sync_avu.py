@@ -83,74 +83,53 @@ class CKANSyncClient:
 
     def create_dataset(self, data: dict) -> dict:
         url = f"{self.base_url}/api/3/action/package_create"
-        resp = self.session.post(url, data=json.dumps(data), timeout=15)
+        timeout = 300 if data.get("resources") else 15
+        resp = self.session.post(url, data=json.dumps(data), timeout=timeout)
+        if not resp.text:
+            return {"success": False, "error": f"Empty response (HTTP {resp.status_code})"}
         return resp.json()
 
     def update_dataset(self, dataset_id: str, data: dict) -> dict:
         data["id"] = dataset_id
         url = f"{self.base_url}/api/3/action/package_update"
-        resp = self.session.post(url, data=json.dumps(data), timeout=15)
-        return resp.json()
-
-    def get_resources(self, dataset_id: str) -> list:
-        """Return the resources list for a dataset (empty list on failure)."""
-        dataset = self.get_dataset_by_name(dataset_id)
-        return dataset.get("resources", []) if dataset else []
-
-    def add_resource_link(self, data: dict) -> dict:
-        """
-        Add a URL-linked resource to a dataset.
-        Mirrors kando/ckan.py:add_resource_link().
-        """
-        url = f"{self.base_url}/api/3/action/resource_create"
-        resp = self.session.post(url, json=data, timeout=30)
+        timeout = 300 if data.get("resources") else 15
+        resp = self.session.post(url, data=json.dumps(data), timeout=timeout)
+        if not resp.text:
+            return {"success": False, "error": f"Empty response (HTTP {resp.status_code})"}
         return resp.json()
 
 
-def sync_resources_for_dataset(
-    ckan: CKANSyncClient,
+def build_resources_for_dataset(
     irods: IRODSClient,
     dataset_id: str,
     de_path: str,
-) -> tuple[int, int]:
+    existing_resources: list | None = None,
+) -> list | None:
     """
-    Sync file/folder resources for one dataset. Returns (added, errors).
+    Build the full resources list for a dataset (existing + new).
 
-    Fetches the iRODS file listing and the existing CKAN resources, then adds
-    only files not already present — matching the behaviour of
-    kando/utils/migrate.py but idempotent across repeated runs.
+    Returns the combined list to embed in package_create/package_update,
+    or None if WEB_DAV_URL is not set or listing fails.
     """
     if not WEB_DAV_URL:
         logger.warning("WEB_DAV_URL not set — skipping resource sync")
-        return 0, 0
+        return None
 
-    existing_names = {r["name"] for r in ckan.get_resources(dataset_id)}
+    existing = existing_resources or []
+    existing_names = {r["name"] for r in existing}
 
     try:
         listing = irods.list_files(de_path)
     except Exception as e:
         logger.error("Failed to list files at %s: %s", de_path, e)
-        return 0, 1
+        return None
 
     to_add = get_resources_to_add(listing, existing_names, dataset_id, WEB_DAV_URL)
-    if not to_add:
-        return 0, 0
+    if to_add:
+        for r in to_add:
+            logger.info("  + resource: %s", r["name"])
 
-    added, errors = 0, 0
-    for resource_data in to_add:
-        result = ckan.add_resource_link(resource_data)
-        if result.get("success"):
-            logger.info("  + resource: %s", resource_data["name"])
-            added += 1
-        else:
-            logger.error(
-                "  ! resource failed (%s): %s",
-                resource_data["name"],
-                result.get("error"),
-            )
-            errors += 1
-
-    return added, errors
+    return existing + to_add
 
 
 def sync_source(
@@ -220,9 +199,8 @@ def sync_source(
             try:
                 get_title(avus)
             except KeyError:
-                logger.warning("Skipping %s: no title in metadata", dirname)
-                stats["skipped"] += 1
-                continue
+                logger.info("No title in metadata for %s, using directory name", dirname)
+                avus["title"] = dirname
 
             mapped = map_avus_to_ckan(avus, owner_org=owner_org, groups=groups)
 
@@ -236,9 +214,22 @@ def sync_source(
                 existing = ckan.get_dataset_by_name(mapped["name"])
                 if existing:
                     logger.info("Dataset %s already exists in CKAN, updating", mapped["name"])
+                    # Build resources: keep existing + add new
+                    resources = build_resources_for_dataset(
+                        irods, existing["id"], path,
+                        existing_resources=existing.get("resources", []),
+                    )
+                    if resources is not None:
+                        mapped["resources"] = resources
                     result = ckan.update_dataset(existing["id"], mapped)
                     ckan_id = existing["id"]
                 else:
+                    # Build resources for new dataset (no existing ones)
+                    resources = build_resources_for_dataset(
+                        irods, "new", path,
+                    )
+                    if resources is not None:
+                        mapped["resources"] = resources
                     result = ckan.create_dataset(mapped)
                     if result.get("success"):
                         ckan_id = result["result"]["id"]
@@ -265,6 +256,15 @@ def sync_source(
             else:
                 ckan_id = state.get_ckan_id(dirname)
                 if ckan_id:
+                    # Build resources: keep existing + add new
+                    existing_dataset = ckan.get_dataset_by_name(mapped["name"])
+                    existing_res = existing_dataset.get("resources", []) if existing_dataset else []
+                    resources = build_resources_for_dataset(
+                        irods, ckan_id, path,
+                        existing_resources=existing_res,
+                    )
+                    if resources is not None:
+                        mapped["resources"] = resources
                     result = ckan.update_dataset(ckan_id, mapped)
                     if not result.get("success"):
                         logger.error("Failed to update %s: %s", dirname, result.get("error"))
@@ -275,22 +275,27 @@ def sync_source(
                     existing = ckan.get_dataset_by_name(mapped["name"])
                     if existing:
                         ckan_id = existing["id"]
+                        existing_res = existing.get("resources", [])
+                        resources = build_resources_for_dataset(
+                            irods, ckan_id, path,
+                            existing_resources=existing_res,
+                        )
+                        if resources is not None:
+                            mapped["resources"] = resources
                         result = ckan.update_dataset(ckan_id, mapped)
                     else:
+                        resources = build_resources_for_dataset(
+                            irods, "new", path,
+                        )
+                        if resources is not None:
+                            mapped["resources"] = resources
                         result = ckan.create_dataset(mapped)
                         if result.get("success"):
                             ckan_id = result["result"]["id"]
                 stats["updated"] += 1
 
-            # Sync file resources (adds new files, skips already-present ones)
-            if ckan_id:
-                r_added, r_errors = sync_resources_for_dataset(
-                    ckan, irods, ckan_id, path
-                )
-                if r_added:
-                    logger.info("Resources synced: +%d added", r_added)
-                if r_errors:
-                    stats["errors"] += r_errors
+            if mapped.get("resources"):
+                logger.info("Resources included: %d total", len(mapped["resources"]))
 
             # Update state
             irods_info = {"modify_time": modify_time}
