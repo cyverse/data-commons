@@ -26,4 +26,13 @@ CKAN UI customizations live in `ckan/templates/` and follow CKAN's template inhe
 - **To undo a customization**: Delete the override file from `ckan/templates/` and rerun the playbook. CKAN falls back to its default template automatically.
 
 Current overrides:
-- `templates/package/search.html` — Adds DE date sort options (Date Created/Modified in Discovery Environment) to the dataset search dropdown.
+- `templates/package/search.html` — Adds DE date sort options (Date Created in Discovery Environment) to the dataset search dropdown.
+
+## Custom Solr Schema
+
+The Solr schema lives in `ckan/solr/schema.xml` (based on CKAN 2.11 default). The playbook deploys it to `/var/solr/data/ckan/conf/managed-schema.xml`.
+
+Custom fields added:
+- `extras_de_created_date` (type `date`) — enables sorting datasets by DE creation date
+
+After schema changes, datasets need to be reindexed. This happens automatically when the sync re-processes datasets. To force a full reindex without syncing: `sudo -u www-data /usr/lib/ckan/default/bin/ckan -c /etc/ckan/default/ckan.ini search-index rebuild`

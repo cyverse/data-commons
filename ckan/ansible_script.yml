@@ -327,17 +327,10 @@
         that: ckan_core_dir_verify.stat.exists
         fail_msg: "CKAN Solr core directory was not created at {{ solr_data_dir }}/data/ckan/conf"
 
-    - name: Download CKAN Solr schema
-      ansible.builtin.get_url:
-        url: "https://raw.githubusercontent.com/ckan/ckan/refs/heads/{{ ckan_version }}/ckan/config/solr/schema.xml"
-        dest: /tmp/ckan_schema.xml
-        mode: '0644'
-
-    - name: Replace Solr schema with CKAN schema
+    - name: Deploy CKAN Solr schema
       ansible.builtin.copy:
-        src: /tmp/ckan_schema.xml
+        src: solr/schema.xml
         dest: "{{ solr_data_dir }}/data/ckan/conf/managed-schema.xml"
-        remote_src: true
         owner: solr
         group: solr
         mode: '0644'
