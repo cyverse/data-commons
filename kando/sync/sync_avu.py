@@ -19,7 +19,7 @@ import requests
 from dotenv import load_dotenv
 
 from kando.sync.irods_client import IRODSClient
-from kando.sync.mapping import map_avus_to_ckan, get_title
+from kando.sync.mapping import map_avus_to_ckan, get_title, get_description
 from kando.sync.resources import get_resources_to_add
 from kando.sync.state import SyncState
 
@@ -83,7 +83,7 @@ class CKANSyncClient:
 
     def create_dataset(self, data: dict) -> dict:
         url = f"{self.base_url}/api/3/action/package_create"
-        timeout = 300 if data.get("resources") else 15
+        timeout = 600 if data.get("resources") else 15
         resp = self.session.post(url, data=json.dumps(data), timeout=timeout)
         if not resp.text:
             return {"success": False, "error": f"Empty response (HTTP {resp.status_code})"}
@@ -92,7 +92,7 @@ class CKANSyncClient:
     def update_dataset(self, dataset_id: str, data: dict) -> dict:
         data["id"] = dataset_id
         url = f"{self.base_url}/api/3/action/package_update"
-        timeout = 300 if data.get("resources") else 15
+        timeout = 600 if data.get("resources") else 15
         resp = self.session.post(url, data=json.dumps(data), timeout=timeout)
         if not resp.text:
             return {"success": False, "error": f"Empty response (HTTP {resp.status_code})"}
@@ -201,6 +201,12 @@ def sync_source(
             except KeyError:
                 logger.info("No title in metadata for %s, using directory name", dirname)
                 avus["title"] = dirname
+
+            try:
+                get_description(avus)
+            except KeyError:
+                logger.info("No description in metadata for %s, using empty string", dirname)
+                avus["description"] = ""
 
             mapped = map_avus_to_ckan(avus, owner_org=owner_org, groups=groups)
 
