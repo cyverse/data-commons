@@ -412,10 +412,11 @@
           ## Storage Settings
           ckan.storage_path = {{ ckan_storage_path }}
 
-          ## Session Settings (Redis-backed via Flask-Session)
+          ## Session Settings (Redis-backed via Beaker)
+          beaker.session.type = ext:redis
+          beaker.session.url = redis://{{ redis_host }}:{{ redis_port }}/1
           beaker.session.key = ckan
           beaker.session.secret = {{ ckan_session_secret }}
-          SESSION_TYPE = redis
 
           ## Caching
           ckan.cache_enabled = true
