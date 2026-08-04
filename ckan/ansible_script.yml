@@ -481,8 +481,8 @@
 
     - name: Copy custom CKAN template overrides
       ansible.builtin.copy:
-        src: templates/package/
-        dest: /etc/ckan/default/custom_templates/package/
+        src: templates/
+        dest: /etc/ckan/default/custom_templates/
         owner: www-data
         group: www-data
         mode: '0644'

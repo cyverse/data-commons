@@ -1,0 +1,57 @@
+{% extends "page.html" %}
+
+{% block subtitle %}{{ _("Welcome") }}{% endblock %}
+
+{% block maintag %}{% endblock %}
+{% block toolbar %}{% endblock %}
+
+{% block content %}
+<div class="homepage">
+  <div id="content" class="container">
+    {{ self.flash() }}
+  </div>
+  <div role="main">
+    <div class="main hero">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-6">
+            {% block promoted %}
+            {% snippet 'home/snippets/promoted.html' %}
+            {% endblock %}
+          </div>
+          <div class="col-md-6">
+            {% block search %}
+            {% snippet 'home/snippets/search.html', search_facets=search_facets %}
+            {% endblock %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main module-feeds">
+      <div class="container">
+        <div class="row">
+          <div class="col-12">
+            <div class="card box">
+              {% set organizations = h.get_featured_organizations(count=25) %}
+              <h2 class="text-center mb-4">{{ _('Organizations') }}</h2>
+              <div class="d-flex flex-wrap justify-content-center gap-4 pb-3">
+                {% for org in organizations %}
+                  <a href="{{ h.url_for('organization.read', id=org.name) }}" class="text-center text-decoration-none" style="width: 140px;">
+                    <img src="{{ org.image_display_url or h.url_for_static('/base/images/placeholder-organization.png') }}"
+                         alt="{{ org.title or org.name }}"
+                         class="rounded-circle mb-2"
+                         style="width: 80px; height: 80px; object-fit: cover; border: 2px solid #ddd;" />
+                    <div class="fw-bold text-dark">{{ org.title or org.name }}</div>
+                    <small class="text-muted">{{ org.package_count }} {{ _('Datasets') }}</small>
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
