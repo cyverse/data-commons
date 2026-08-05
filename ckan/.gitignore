@@ -1,2 +1,3 @@
 group_vars/*
 inventory.ini
+dc_admin_credentials.txt

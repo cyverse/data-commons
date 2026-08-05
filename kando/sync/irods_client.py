@@ -2,13 +2,15 @@
 iRODS data access via the CyVerse Terrain API.
 
 Uses the same Terrain API as kando/de.py but with a focused, decoupled interface
-for the sync module. Requires DE credentials for authenticated access.
+for the sync module. DE credentials are optional: the endpoints used here
+(paged-directory, <id>/metadata) are publicly readable for public collections
+and work anonymously. Credentials, if supplied, add a Bearer token.
 
 Verified AVU response format (from live MCP tool calls 2026-03-11):
   { "avus": [{"attr": "title", "value": "..."}, {"attr": "contributor", "value": "Smith J"}, ...] }
 
-Directory listing format (from Terrain secured/filesystem/directory):
-  { "folders": [{"id": "...", "path": "...", "label": "...", "date-created": ms, "date-modified": ms}, ...] }
+Directory listing format (from Terrain filesystem/paged-directory):
+  { "total": N, "folders": [{"id": "...", "path": "...", "label": "...", "date-created": ms, "date-modified": ms}, ...], "files": [...] }
 """
 
 import os
@@ -40,18 +42,17 @@ class IRODSClient:
     def __init__(self, username: str = None, password: str = None):
         self.base_url = TERRAIN_URL.rstrip("/")
         self.session = requests.Session()
+        self.session.headers.update({"Accept": "application/json"})
 
-        # Authenticate
+        # Authentication is optional: all endpoints used by the sync
+        # (paged-directory, <id>/metadata) are publicly readable for
+        # public collections and work anonymously. If credentials are
+        # provided, attach a Bearer token; otherwise run unauthenticated.
         username = username or os.getenv("DE_USERNAME")
         password = password or os.getenv("DE_PASSWORD")
-        if not username or not password:
-            raise ValueError("DE_USERNAME and DE_PASSWORD must be set for Terrain API access")
-
-        token = self._get_token(username, password)
-        self.session.headers.update({
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-        })
+        if username and password:
+            token = self._get_token(username, password)
+            self.session.headers["Authorization"] = f"Bearer {token}"
 
     def _get_token(self, username: str, password: str) -> str:
         url = f"{self.base_url}/token/keycloak"
@@ -86,13 +87,26 @@ class IRODSClient:
         """
         List subdirectories under any iRODS collection path.
 
+        Uses the public (unauthenticated) paged-directory endpoint rather
+        than secured/filesystem/directory, so no DE credentials are needed
+        for public collections. Fetches the total count first, then requests
+        all entries in one call. The 'folders' array carries the same
+        id/path/label/timestamp fields the secured directory endpoint did.
+
         Returns:
             List of dicts with keys: 'name', 'path', 'modify_time', 'create_time', 'id'
         """
-        url = f"{self.base_url}/secured/filesystem/directory"
-        params = {"path": base_path}
-        resp = self.session.get(url, params=params, timeout=60)
+        url = f"{self.base_url}/filesystem/paged-directory"
+
+        # First pass: get the total number of entries at this level.
+        resp = self.session.get(url, params={"path": base_path, "limit": 1}, timeout=60)
         resp.raise_for_status()
+        total = resp.json().get("total") or 0
+
+        # Second pass: fetch all entries. (limit must cover files + folders.)
+        if total > 1:
+            resp = self.session.get(url, params={"path": base_path, "limit": total}, timeout=60)
+            resp.raise_for_status()
         data = resp.json()
 
         dirs = []
@@ -176,7 +190,7 @@ class IRODSClient:
             Dict with 'total', 'files', and 'folders' keys, matching the
             Terrain paged-directory response format.
         """
-        url = f"{self.base_url}/secured/filesystem/paged-directory"
+        url = f"{self.base_url}/filesystem/paged-directory"
         resp = self.session.get(url, params={"path": path, "limit": 1}, timeout=30)
         resp.raise_for_status()
         data = resp.json()
@@ -190,17 +204,50 @@ class IRODSClient:
         return resp.json()
 
     def get_collection_info(self, path: str) -> dict:
-        """Get stat info for a collection path."""
-        url = f"{self.base_url}/secured/filesystem/stat"
-        params = {"paths": path}
-        resp = self.session.get(url, params=params, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
+        """
+        Get stat info (id, timestamps) for a collection path.
 
-        # Response: {"paths": {"/path/...": {"id": "...", "date-created": ms, "date-modified": ms, ...}}}
-        path_info = data.get("paths", {}).get(path, {})
-        return {
-            "modify_time": _ms_to_iso(path_info.get("date-modified", 0)),
-            "create_time": _ms_to_iso(path_info.get("date-created", 0)),
-            "id": path_info.get("id", ""),
-        }
+        Rather than the auth-only secured/filesystem/stat endpoint, this
+        lists the parent collection via the public paged-directory endpoint
+        and picks out the matching child folder. Returns empty fields if the
+        path is not found under its parent.
+        """
+        parent = path.rstrip("/").rsplit("/", 1)[0]
+        for folder in self.list_project_directories(parent):
+            if folder.get("path", "").rstrip("/") == path.rstrip("/"):
+                return {
+                    "modify_time": folder.get("modify_time", ""),
+                    "create_time": folder.get("create_time", ""),
+                    "id": folder.get("id", ""),
+                }
+        return {"modify_time": "", "create_time": "", "id": ""}
+
+    def stat(self, paths: list[str]) -> dict:
+        """
+        Batch-stat one or more iRODS paths via the public filesystem/stat
+        endpoint. Returns the raw Terrain response: a dict with a "paths" map
+        keyed by the requested path.
+
+        Terrain's stat is a POST with a JSON body -- NOT a GET with query
+        params -- and the unsecured /filesystem/stat variant works
+        anonymously (no Bearer token), same as the other endpoints this
+        client uses. Passing a GET, or hitting /secured/filesystem/stat
+        without a token, is what makes it look "unavailable".
+
+        For a *file* each entry includes id, label, type, file-size, md5,
+        content-type, infoType, date-created, date-modified, permission.
+        For a *collection* it includes dir-count / file-count instead of
+        file-size / md5. This is richer than paged-directory (per-file md5
+        and size), which makes it the right tool for future per-file change
+        detection or populating CKAN resource checksums/sizes.
+
+        Not currently used by the sync -- get_collection_info() derives
+        folder timestamps from paged-directory instead -- but kept here as
+        the correct, ready-to-use entry point for that future work.
+        """
+        resp = self.session.post(
+            f"{self.base_url}/filesystem/stat",
+            json={"paths": paths},
+        )
+        resp.raise_for_status()
+        return resp.json()

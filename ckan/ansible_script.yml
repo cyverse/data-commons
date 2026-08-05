@@ -733,8 +733,6 @@
           CKAN_API_KEY={{ ckan_sync_api_key }}
           TERRAIN_URL=https://de.cyverse.org/terrain
           WEB_DAV_URL=https://data.cyverse.org/dav-anon
-          DE_USERNAME={{ de_sync_username }}
-          DE_PASSWORD={{ de_sync_password }}
         dest: /opt/ckan-sync/.env
         owner: www-data
         group: www-data

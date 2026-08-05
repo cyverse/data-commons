@@ -91,7 +91,9 @@ Authentication: Keycloak OIDC via `ckanext-oidc-pkce` plugin against `kc.cyverse
 
 ### Vault Variables (group_vars/vault.yml)
 
-Required: `ckan_db_user`, `ckan_db_password`, `ckan_db_name`, `oidc_client_id`, `oidc_client_secret`. Optional: `ckan_admin_user`, `ckan_admin_email`, `ckan_admin_password`, `ckan_sync_api_key`, `de_sync_username`, `de_sync_password`.
+Required: `ckan_db_user`, `ckan_db_password`, `ckan_db_name`, `oidc_client_id`, `oidc_client_secret`. Optional: `ckan_admin_user`, `ckan_admin_email`, `ckan_admin_password`, `ckan_sync_api_key`.
+
+> **Note:** The AVU sync no longer requires DE credentials — the Terrain endpoints it uses (`filesystem/paged-directory`, `filesystem/<id>/metadata`) are publicly readable and accessed anonymously. `de_sync_username`/`de_sync_password` are no longer read by the playbook.
 
 ## Known Gotchas
 
