@@ -32,6 +32,7 @@ Current overrides:
 - `templates/home/about.html` — Replaces CKAN's default "About" page copy with CyVerse Data Commons text.
 - `templates/header.html` — Custom main nav (Datasets / Organizations / About). Also points the "Log in" link straight at the Keycloak SSO flow (`oidc_pkce.login`) and drops "Register", since local username/password login and registration are non-functional. Guarded by `h.plugin_loaded('oidc_pkce')` so it falls back to the default links where the OIDC plugin isn't enabled.
 - `templates/user/login.html` — Redirects `/user/login` straight to the OIDC login flow (meta-refresh), forwarding `came_from` so users return to their original page after signing in. Falls back to CKAN's default login form when `oidc_pkce` is not loaded (e.g. local dev).
+- `templates/organization/index.html` — Replaces the generic "What are Organizations?" sidebar stub on the organizations list with CyVerse-relevant copy (research groups/communities publishing data), via the `secondary_content` block.
 - `templates/package/search.html` — Adds DE date sort options (Date Created in Discovery Environment) to the dataset search dropdown.
 
 ## Static Assets & Branding

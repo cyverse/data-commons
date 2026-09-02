@@ -1,0 +1,31 @@
+{% ckan_extends %}
+
+{# Replace CKAN's generic "What are Organizations?" sidebar stub (which talks
+   about CKAN roles/authorisation — irrelevant to people browsing the catalog)
+   with CyVerse-relevant copy. Overriding the secondary_content block on the
+   organizations index only, rather than the shared
+   organization/snippets/helper.html snippet, so other pages that reuse that
+   snippet are left alone. Markup mirrors the default module so it styles
+   identically. #}
+{% block secondary_content %}
+  <div class="module module-narrow module-shallow">
+    <h2 class="module-heading">
+      <i class="fa fa-info-circle"></i>
+      {{ _('What are Organizations?') }}
+    </h2>
+    <div class="module-content">
+      <p>
+        {% trans %}
+          Organizations are the research groups, projects, and communities
+          that publish data in the CyVerse Data Commons. Every dataset belongs
+          to the organization that contributed it.
+        {% endtrans %}
+      </p>
+      <p>
+        {% trans %}
+          Select an organization to browse the datasets it has published.
+        {% endtrans %}
+      </p>
+    </div>
+  </div>
+{% endblock %}
