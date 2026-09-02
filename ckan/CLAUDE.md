@@ -73,7 +73,7 @@ python -m kando.sync.sync_avu --state-file /path/to/sync_state.json
 
 Services: `ckan` (port 5000) → `db` (PostgreSQL 15) + `solr` (Solr 9 with CKAN schema) + `redis` (Redis 7). A `solr-init` container runs first as root to fix volume permissions (`chown 8983:8983`) since Solr refuses to run as root.
 
-The `ckan_style.css` file is bind-mounted as `/srv/app/src/ckan/ckan/public/base/css/custom.css` for CyVerse branding (blue color scheme).
+Branding and appearance match production via env vars and bind mounts: `./templates` and `./public` are mounted in, and `CKAN___EXTRA_TEMPLATE_PATHS`, `CKAN___EXTRA_PUBLIC_PATHS`, `CKAN__SITE_TITLE`, `CKAN__SITE_LOGO`, and `CKAN__FAVICON` are set (via the `envvars` plugin) so the same overrides and static assets render locally.
 
 ### Ansible Playbook (Production)
 
@@ -88,6 +88,8 @@ Key configuration:
 - AVU sync: `/opt/ckan-sync/` (hourly cron via `flock`)
 
 Authentication: Keycloak OIDC via `ckanext-oidc-pkce` plugin against `kc.cyverse.org/auth` realm `CyVerse`.
+
+Branding is code-managed (not set in the admin panel): CSS lives in the `templates/base.html` `styles` block override; logo/favicon are files in `ckan/public/` deployed to `/etc/ckan/default/custom_public/` and served via `extra_public_paths`; `ckan.site_title`/`site_description`/`site_logo`/`favicon` are set in the generated `ckan.ini` from `ckan_*` playbook vars. See `README.md` → "Static Assets & Branding" for the one-time DB-override caveat.
 
 ### Vault Variables (group_vars/vault.yml)
 

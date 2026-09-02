@@ -1,0 +1,35 @@
+{% ckan_extends %}
+
+{# About page content for CyVerse Data Commons.
+
+   Overrides CKAN's default "about" block, which otherwise shows the generic
+   "CKAN is the world's leading open-source data portal" marketing copy. Kept
+   here as a template override so the text is version-controlled and deployed
+   by the same "Copy custom CKAN template overrides" task as the other
+   overrides (base.html, header.html, etc.) rather than pasted into the admin
+   panel. #}
+{% block about %}
+  <h1 class="page-heading">About CyVerse Data Commons</h1>
+
+  <p>
+    The CyVerse Data Commons provides services to manage, organize, preserve,
+    publish, discover, and reuse research data. It is the data repository of
+    <a href="https://cyverse.org">CyVerse</a>, hosting community-released
+    datasets alongside data curated by CyVerse.
+  </p>
+
+  <p>
+    You can browse and search datasets contributed by research organizations
+    and communities, download data over standard web protocols, and explore the
+    metadata attached to every dataset. Datasets are grouped by the
+    organizations that publish them.
+  </p>
+
+  <p>
+    Data in the Commons is synchronized from the
+    <a href="https://de.cyverse.org">CyVerse Discovery Environment</a>, where
+    researchers manage their files and metadata. To learn more about CyVerse
+    and its cyberinfrastructure for data-driven science, visit
+    <a href="https://cyverse.org">cyverse.org</a>.
+  </p>
+{% endblock %}

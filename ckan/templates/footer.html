@@ -1,0 +1,16 @@
+{% ckan_extends %}
+
+{# Replace CKAN's default footer boilerplate with CyVerse attribution.
+   Removes the "Powered by CKAN" credit and the "CKAN Association" marketing
+   link. The API-docs link and the Open Data badge are kept (the API link is
+   functional; relabeled to "API"). #}
+{% block footer_attribution %}
+  <p><strong>CyVerse Data Commons</strong> &middot;
+     <a href="https://cyverse.org">cyverse.org</a></p>
+{% endblock %}
+
+{% block footer_links_ckan %}
+  {% set api_url = 'https://docs.ckan.org/en/{0}/api/'.format(g.ckan_doc_version) %}
+  <li><a href="{{ api_url }}">{{ _('API') }}</a></li>
+  <li><a href="https://www.opendefinition.org/od/"><img src="{{ h.url_for_static('/base/images/od_80x15_blue.png') }}" alt="Open Data"></a></li>
+{% endblock %}

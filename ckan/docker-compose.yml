@@ -14,9 +14,19 @@ services:
       CKAN_SITE_ID: default
       CKAN___BEAKER__SESSION__SECRET: local-dev-secret-change-me
       CKAN__PLUGINS: "image_view text_view datatables_view envvars"
+      # Load the same template overrides and static assets as production so
+      # local dev matches dc.cyverse.org (branding, header, homepage, etc.).
+      CKAN___EXTRA_TEMPLATE_PATHS: /srv/app/custom_templates
+      CKAN___EXTRA_PUBLIC_PATHS: /srv/app/custom_public
+      CKAN__SITE_TITLE: "CyVerse Data Commons"
+      CKAN__SITE_DESCRIPTION: "The Data Commons provides services to manage, organize, preserve, publish, discover, and reuse data."
+      CKAN__SITE_INTRO_TEXT: "Welcome to CyVerse Data Commons!"
+      CKAN__SITE_LOGO: /cyverse_white.png
+      CKAN__FAVICON: /favicon.ico
     volumes:
       - ckan_storage:/var/lib/ckan
-      - ./ckan_style.css:/srv/app/src/ckan/ckan/public/base/css/custom.css:ro
+      - ./templates:/srv/app/custom_templates:ro
+      - ./public:/srv/app/custom_public:ro
     depends_on:
       db:
         condition: service_healthy

@@ -11,6 +11,18 @@
     ckan_domain: "dc.cyverse.org"
     ckan_site_url: "https://{{ ckan_domain }}"
     ckan_storage_path: "/var/lib/ckan/default/storage"
+
+    # Site appearance / branding
+    ckan_site_title: "CyVerse Data Commons"
+    ckan_site_description: "The Data Commons provides services to manage, organize, preserve, publish, discover, and reuse data."
+    # Homepage hero text (rendered by the default promoted snippet). Kept here so
+    # a playbook run does not wipe it — the whole ckan.ini is regenerated on
+    # every run, so any hand-added value would otherwise be lost.
+    ckan_site_intro_text: "Welcome to CyVerse Data Commons!"
+    # Static assets shipped in ckan/public/ and served from extra_public_paths (site root)
+    ckan_custom_public_path: "/etc/ckan/default/custom_public"
+    ckan_site_logo: "/cyverse_white.png"
+    ckan_favicon: "/favicon.ico"
     ckan_port: 5000
     ckan_bind_host: "127.0.0.1"
     ckan_venv: "/usr/lib/ckan/default"
@@ -388,6 +400,11 @@
           ## Site Settings
           ckan.site_url = {{ ckan_site_url }}
           ckan.site_id = {{ ckan_site_id | default('default') }}
+          ckan.site_title = {{ ckan_site_title }}
+          ckan.site_description = {{ ckan_site_description }}
+          ckan.site_intro_text = {{ ckan_site_intro_text }}
+          ckan.site_logo = {{ ckan_site_logo }}
+          ckan.favicon = {{ ckan_favicon }}
 
           ## Authentication Settings
           ckan.auth.user_create_organizations = False
@@ -408,6 +425,9 @@
 
           ## Custom template overrides
           extra_template_paths = /etc/ckan/default/custom_templates
+
+          ## Custom static assets (logo, favicon) served from the site root
+          extra_public_paths = {{ ckan_custom_public_path }}
 
           ## Storage Settings
           ckan.storage_path = {{ ckan_storage_path }}
@@ -477,6 +497,23 @@
         owner: www-data
         group: www-data
         mode: '0640'
+      notify: Restart CKAN
+
+    - name: Create custom public assets directory
+      ansible.builtin.file:
+        path: "{{ ckan_custom_public_path }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Copy custom static assets (logo, favicon)
+      ansible.builtin.copy:
+        src: public/
+        dest: "{{ ckan_custom_public_path }}/"
+        owner: www-data
+        group: www-data
+        mode: '0644'
       notify: Restart CKAN
 
     - name: Copy custom CKAN template overrides

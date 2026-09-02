@@ -9,3 +9,21 @@
       h.humanize_entity_type('organization', org_type, 'main nav') or _('Organizations'), ['organization']),
     ('home.about', _('About')) ) }}
 {% endblock %}
+
+{# CyVerse authenticates exclusively through Keycloak SSO. Point "Log in"
+   straight at the OIDC login flow (ckanext-oidc-pkce) instead of CKAN's
+   local username/password form, which is non-functional here. came_from is
+   set to the current page so the user returns here after signing in. The
+   "Register" link is dropped: local account creation is disabled too —
+   accounts are managed in Keycloak.
+
+   Guarded by plugin_loaded so environments without the OIDC plugin (e.g. the
+   local docker-compose dev stack) fall back to CKAN's default login/register
+   links instead of erroring on the missing oidc_pkce.login endpoint. #}
+{% block header_account_notlogged %}
+  {% if h.plugin_loaded('oidc_pkce') %}
+    <li>{% link_for _('Log in'), named_route='oidc_pkce.login', came_from=request.path %}</li>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}

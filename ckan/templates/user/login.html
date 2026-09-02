@@ -1,0 +1,54 @@
+{% ckan_extends %}
+
+{# CyVerse authenticates exclusively through Keycloak SSO; CKAN's local
+   username/password login is non-functional here. Anyone who reaches
+   /user/login — via the header "Log in" link or CKAN's automatic redirect
+   from a protected page (which appends ?came_from=) — is sent straight to
+   the OIDC login flow (ckanext-oidc-pkce). came_from is forwarded so the
+   user returns to their original destination after authenticating. A
+   meta-refresh in <head> does the redirect (CSP-safe, no inline JS); the
+   visible message with a manual link is a fallback if it doesn't fire.
+
+   Everything is guarded by plugin_loaded: where the OIDC plugin isn't
+   enabled (e.g. the local docker-compose dev stack), this falls back to
+   CKAN's default login form instead of erroring on the missing endpoint. #}
+{% set oidc_enabled = h.plugin_loaded('oidc_pkce') %}
+{% if oidc_enabled %}
+  {% set came_from = request.args.get('came_from') %}
+  {% set oidc_login = h.url_for('oidc_pkce.login', came_from=came_from) if came_from else h.url_for('oidc_pkce.login') %}
+{% endif %}
+
+{% block subtitle %}{% if oidc_enabled %}{{ _('Redirecting to sign in') }}{% else %}{{ super() }}{% endif %}{% endblock %}
+
+{% block head_extras %}
+  {{ super() }}
+  {% if oidc_enabled %}
+    <meta http-equiv="refresh" content="0; url={{ oidc_login }}">
+  {% endif %}
+{% endblock %}
+
+{% block breadcrumb_content %}
+  {% if oidc_enabled %}
+    <li class="active">{{ _('Sign in') }}</li>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
+
+{% block primary_content %}
+  {% if oidc_enabled %}
+    <section class="module">
+      <div class="module-content text-center">
+        <h1 class="page-heading">{{ _('Redirecting to sign in…') }}</h1>
+        <p>{% trans %}You are being redirected to the CyVerse single sign-on page.{% endtrans %}</p>
+        <p><a class="btn btn-primary" href="{{ oidc_login }}">{{ _('Continue to sign in') }}</a></p>
+      </div>
+    </section>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
+
+{# Drop the "Need an Account?" / "Forgotten your password?" panels under SSO —
+   both are local-account features that don't apply. Keep them otherwise. #}
+{% block secondary_content %}{% if not oidc_enabled %}{{ super() }}{% endif %}{% endblock %}

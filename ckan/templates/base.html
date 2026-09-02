@@ -1,0 +1,103 @@
+{% ckan_extends %}
+
+{# CyVerse Data Commons branding.
+
+   This replaces the custom CSS that was previously pasted by hand into the
+   CKAN admin panel (/ckan-admin/config -> "Custom CSS"), which stored the
+   rules in the database and injected them inline on every page. Keeping the
+   branding here means it is version-controlled and deployed automatically by
+   the Ansible "Copy custom CKAN template overrides" task. #}
+{# Drop CKAN's "<meta name='generator' content='ckan ...'>" tag so the site
+   doesn't advertise the CKAN version in page metadata. #}
+{% block meta_generator %}{% endblock %}
+
+{# Use `custom_styles`, not `styles`: CKAN renders `styles` *before*
+   `h.render_assets('style')` emits main.css, so rules placed in `styles`
+   are overridden by main.css at equal specificity (this is why the
+   `.homepage .hero` background kept falling back to CKAN's default tile).
+   `custom_styles` is rendered *after* main.css — the same slot the admin
+   "Custom CSS" used — so these rules win. #}
+{% block custom_styles %}
+  {{ super() }}
+  <style>
+    .account-masthead {
+      background-color: #004471;
+    }
+    .masthead {
+      background-color: #0971ab;
+    }
+    /* "Search Your Data" box on the homepage. */
+    .homepage .module-search .module-content {
+      background-color: #0971ab;
+    }
+    /* "Popular Tags" box on the homepage. */
+    .homepage .module-search .tags {
+      background-color: #142248;
+    }
+    .site-footer,
+    body {
+      background-color: #0971ab;
+    }
+    /* Homepage hero: replace CKAN's light tiled background with the site's
+       primary blue (#0971ab, same as the masthead and body) so the white Data
+       Commons logo and hero text read cleanly and the hero flows seamlessly
+       from the navbar. */
+    .homepage .hero {
+      background: #0971ab;
+      padding: 48px 0;
+    }
+    /* Organizations section on the homepage: a light band holding a grid of
+       individual org tiles instead of one heavy bordered box. */
+    .homepage .module-feeds {
+      background: #f4f5f7;
+      padding: 48px 0;
+    }
+    .org-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 24px;
+    }
+    .org-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 180px;
+      padding: 24px 16px;
+      background: #fff;
+      border: 1px solid #e6e8eb;
+      border-radius: 12px;
+      color: inherit;
+      text-decoration: none;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .org-tile:hover,
+    .org-tile:focus {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .10);
+      border-color: #0971ab;
+      text-decoration: none;
+    }
+    .org-tile__logo {
+      width: 88px;
+      height: 88px;
+      object-fit: cover;
+      border-radius: 50%;
+      background: #f4f5f7;
+      margin-bottom: 14px;
+    }
+    .org-tile__name {
+      font-weight: 600;
+      color: #0971ab;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .org-tile__count {
+      font-size: .8rem;
+      color: #55606b;
+      background: #eef1f4;
+      border-radius: 999px;
+      padding: 2px 12px;
+    }
+  </style>
+{% endblock %}

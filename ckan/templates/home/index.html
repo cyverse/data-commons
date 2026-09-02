@@ -16,7 +16,24 @@
         <div class="row">
           <div class="col-md-6">
             {% block promoted %}
-            {% snippet 'home/snippets/promoted.html' %}
+            {# CyVerse Data Commons hero. Replaces CKAN's default promoted
+               snippet (which rendered a "This is a featured section"
+               placeholder). Shows the older Data Commons logo, the welcome
+               line as a subtitle, and the site description. The hero band is
+               given the site's primary blue in base.html, so the white
+               logo/text sit directly on it. Text uses the site_intro_text / site_description
+               config values so it stays managed from ckan.ini. #}
+            <div class="hero-caption text-white text-center px-3">
+              <img src="{{ h.url_for_static('/datacommons_white.png') }}"
+                   alt="{{ g.site_title or _('CyVerse Data Commons') }}"
+                   class="img-fluid mb-3" style="max-width: 240px;" />
+              {% if g.site_intro_text %}
+                <h2 class="h3 text-white mb-2">{{ g.site_intro_text }}</h2>
+              {% endif %}
+              {% if g.site_description %}
+                <p class="lead text-white mb-0">{{ g.site_description }}</p>
+              {% endif %}
+            </div>
             {% endblock %}
           </div>
           <div class="col-md-6">
@@ -30,25 +47,19 @@
 
     <div class="main module-feeds">
       <div class="container">
-        <div class="row">
-          <div class="col-12">
-            <div class="card box">
-              {% set organizations = h.get_featured_organizations(count=25) %}
-              <h2 class="text-center mb-4">{{ _('Organizations') }}</h2>
-              <div class="d-flex flex-wrap justify-content-center gap-4 pb-3">
-                {% for org in organizations %}
-                  <a href="{{ h.url_for('organization.read', id=org.name) }}" class="text-center text-decoration-none" style="width: 140px;">
-                    <img src="{{ org.image_display_url or h.url_for_static('/base/images/placeholder-organization.png') }}"
-                         alt="{{ org.title or org.name }}"
-                         class="rounded-circle mb-2"
-                         style="width: 80px; height: 80px; object-fit: cover; border: 2px solid #ddd;" />
-                    <div class="fw-bold text-dark">{{ org.title or org.name }}</div>
-                    <small class="text-muted">{{ org.package_count }} {{ _('Datasets') }}</small>
-                  </a>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
+        {% set organizations = h.get_featured_organizations(count=25) %}
+        <h2 class="text-center mb-2">{{ _('Organizations') }}</h2>
+        <p class="text-center text-muted mb-4">{{ _('Browse datasets by the organizations that publish them.') }}</p>
+        <div class="org-grid">
+          {% for org in organizations %}
+            <a href="{{ h.url_for('organization.read', id=org.name) }}" class="org-tile">
+              <img class="org-tile__logo"
+                   src="{{ org.image_display_url or h.url_for_static('/base/images/placeholder-organization.png') }}"
+                   alt="{{ org.title or org.name }}" />
+              <span class="org-tile__name">{{ org.title or org.name }}</span>
+              <span class="org-tile__count">{{ org.package_count }} {{ _('Datasets') }}</span>
+            </a>
+          {% endfor %}
         </div>
       </div>
     </div>
