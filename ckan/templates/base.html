@@ -38,12 +38,15 @@
     body {
       background-color: #0971ab;
     }
-    /* Homepage hero: replace CKAN's light tiled background with the site's
-       primary blue (#0971ab, same as the masthead and body) so the white Data
-       Commons logo and hero text read cleanly and the hero flows seamlessly
-       from the navbar. */
+    /* Homepage hero: replace CKAN's light tiled background with the exact
+       same treatment as the navbar/masthead — primary blue (#0971ab) plus
+       CKAN's bg.png grain overlay — so the hero and navbar match precisely
+       and the hero flows seamlessly from the navbar. (The masthead rule in
+       main.css is `background: #005d7a url(bg.png)`; our override recolors it
+       to #0971ab while keeping the texture, so the hero must include the same
+       texture to look identical rather than flat.) */
     .homepage .hero {
-      background: #0971ab;
+      background: #0971ab url("/base/images/bg.png");
       padding: 48px 0;
     }
     /* Organizations section on the homepage: a light band holding a grid of

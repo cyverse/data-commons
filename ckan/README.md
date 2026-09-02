@@ -27,7 +27,7 @@ CKAN UI customizations live in `ckan/templates/` and follow CKAN's template inhe
 
 Current overrides:
 - `templates/base.html` — Applies CyVerse branding (blue color scheme) via a `{% block styles %}` override. This replaces custom CSS that was previously pasted by hand into the CKAN admin panel. Also empties `{% block meta_generator %}` so the CKAN version is not advertised in page metadata.
-- `templates/footer.html` — Removes CKAN footer boilerplate ("Powered by CKAN" and the "CKAN Association" link), replacing it with CyVerse attribution.
+- `templates/footer.html` — Removes CKAN footer boilerplate ("Powered by CKAN" and the "CKAN Association" link), replacing it with CyVerse attribution. Also adds the legal/policy content carried over from the old Data Commons: footer links to the User Agreement, Privacy Policy, Acceptable Use, and the full CyVerse policies page, plus a "By using the Data Commons you agree to the terms of our User Agreement" notice. Links point at the canonical `cyverse.org/policies` pages.
 - `templates/home/index.html` — Custom homepage: hero shows the Data Commons logo, the welcome line as a subtitle, and the site description; below it, a grid of featured organizations. Replaces CKAN's default "featured section" placeholder.
 - `templates/home/about.html` — Replaces CKAN's default "About" page copy with CyVerse Data Commons text.
 - `templates/header.html` — Custom main nav (Datasets / Organizations / About). Also points the "Log in" link straight at the Keycloak SSO flow (`oidc_pkce.login`) and drops "Register", since local username/password login and registration are non-functional. Guarded by `h.plugin_loaded('oidc_pkce')` so it falls back to the default links where the OIDC plugin isn't enabled.
