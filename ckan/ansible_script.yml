@@ -803,6 +803,29 @@
         cron_file: ckan-avu-sync
       when: ckan_sync_api_key is defined
 
+    - name: Configure logrotate for AVU sync logs
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/ckan-sync
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Rotate the AVU sync cron logs. These are append-only (>>) and
+          # written by short-lived hourly cron jobs, so a plain rename + create
+          # is safe: each run reopens the file. ckan.log is NOT included here —
+          # Supervisor rotates its own stdout_logfile.
+          /var/log/ckan/sync*.log {
+              weekly
+              rotate 12
+              maxsize 100M
+              missingok
+              notifempty
+              compress
+              delaycompress
+              create 0644 www-data www-data
+              su www-data www-data
+          }
+
     - name: Display CKAN access information
       ansible.builtin.debug:
         msg:
