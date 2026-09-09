@@ -8,6 +8,10 @@ by kando/utils/migrate.py and kando/ckan.py:add_resource_link().
 
 from kando.sync.irods_client import _ms_to_iso
 
+# Self-describing text shown on folder resources so it is clear they are
+# browsable directories, not downloadable files.
+FOLDER_DESCRIPTION = "Folder — browse its contents on the CyVerse Data Store"
+
 
 def _file_format(label: str) -> str:
     """Extract file extension from label, matching kando/de.py:get_all_metadata_file()."""
@@ -41,7 +45,7 @@ def build_resource_data(
     return {
         "package_id": dataset_id,
         "name": label,
-        "description": None,
+        "description": FOLDER_DESCRIPTION if is_folder else None,
         "url": webdav_url.rstrip("/") + path,
         "format": "folder" if is_folder else _file_format(label),
         "Date created in discovery environment": _ms_to_iso(

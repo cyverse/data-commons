@@ -1,0 +1,40 @@
+{% ckan_extends %}
+
+{#
+  Render folder resources (format == 'folder') distinctly from files: a folder
+  icon and a "Directory" label in the title, and a single "Browse folder"
+  button that opens the WebDAV directory listing in a new tab instead of the
+  default "Explore/Download" dropdown (which reads as a file download).
+
+  Folder resources are created by the AVU sync (kando/sync/resources.py) with
+  format="folder" and a dav-anon collection URL. Non-folder resources fall
+  through to CKAN's default rendering via super().
+#}
+
+{% set is_folder = res.format and res.format.lower() == 'folder' %}
+
+{% block resource_item_title %}
+  {% if is_folder %}
+    <a class="heading" href="{{ url }}" title="{{ res.name or res.description }}">
+      <i class="fa fa-folder"></i>
+      {{ h.resource_display_name(res) | truncate(50) }}<span class="format-label" property="dc:format" data-format="folder">{{ _('Directory') }}</span>
+    </a>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
+
+{% block resource_item_explore %}
+  {% if is_folder %}
+    {% if not url_is_edit %}
+    <div class="btn-group">
+      <a href="{{ res.url }}" class="btn btn-primary" target="_blank" rel="noreferrer">
+        <i class="fa fa-folder-open"></i>
+        {{ _('Browse folder') }}
+      </a>
+    </div>
+    {% endif %}
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
