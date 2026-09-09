@@ -13,3 +13,5 @@ migration
 */myenv
 */.env
 kando/sync_state.json
+CLAUDE.md
+.claude/
