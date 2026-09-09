@@ -14,12 +14,13 @@ import sys
 import json
 import logging
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from dotenv import load_dotenv
 
 from kando.sync.irods_client import IRODSClient
-from kando.sync.mapping import map_avus_to_ckan, get_title, get_description
+from kando.sync.mapping import map_avus_to_ckan, get_title, get_description, avu_content_hash
 from kando.sync.resources import get_resources_to_add
 from kando.sync.state import SyncState
 
@@ -30,6 +31,12 @@ logger = logging.getLogger(__name__)
 CKAN_URL = os.getenv("CKAN_URL")
 CKAN_API_KEY = os.getenv("CKAN_API_KEY")
 WEB_DAV_URL = os.getenv("WEB_DAV_URL")
+
+# Parallelism for the up-front AVU metadata prefetch. AVUs must be read for
+# every candidate (even unchanged ones) to detect metadata-only edits, so we
+# fan the read-only Terrain GETs out across a small thread pool to keep the
+# added time negligible. Override via env var if needed.
+AVU_FETCH_WORKERS = int(os.getenv("AVU_FETCH_WORKERS", "10"))
 
 # Source definitions: base_path, owner_org, ckan groups, state file, filter_public
 SOURCES = {
@@ -166,36 +173,65 @@ def sync_source(
 
     stats = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
 
+    # Phase 1: filter out deprecated and (for project sources) private folders.
+    candidates = []
     for entry in dirs:
         dirname = entry["name"]
-        path = entry["path"]
-
-        # Skip deprecated datasets
         if dirname.startswith("_deprecated_"):
             logger.debug("Skipping deprecated: %s", dirname)
             stats["skipped"] += 1
             continue
+        if filter_public and not irods.is_publicly_readable(entry["path"]):
+            logger.info("Skipping private folder: %s", dirname)
+            stats["skipped"] += 1
+            continue
+        candidates.append(entry)
 
-        # For project folders, skip private collections
-        if filter_public:
-            if not irods.is_publicly_readable(path):
-                logger.info("Skipping private folder: %s", dirname)
-                stats["skipped"] += 1
-                continue
+    # Phase 2: prefetch AVUs for every candidate in parallel. We must read AVUs
+    # even for unchanged datasets to detect metadata-only edits (these do NOT
+    # bump the iRODS collection modify_time). Fanning the read-only Terrain GETs
+    # across a thread pool keeps this from dominating runtime.
+    avus_by_dir = {}
+    if candidates:
+        with ThreadPoolExecutor(max_workers=AVU_FETCH_WORKERS) as pool:
+            future_to_name = {
+                pool.submit(irods.get_collection_metadata, e["path"], e): e["name"]
+                for e in candidates
+            }
+            for future in as_completed(future_to_name):
+                name = future_to_name[future]
+                try:
+                    avus_by_dir[name] = future.result()
+                except Exception as e:
+                    logger.error("Failed to fetch AVUs for %s: %s", name, e)
+                    avus_by_dir[name] = None
 
-        # Determine action
+    # Phase 3: decide and apply per dataset.
+    for entry in candidates:
+        dirname = entry["name"]
+        path = entry["path"]
         modify_time = entry.get("modify_time", "")
+
+        avus = avus_by_dir.get(dirname)
+        if avus is None:
+            stats["errors"] += 1
+            continue
+
+        # Hash the raw AVUs before we patch in title/description fallbacks, so
+        # the stored hash reflects what iRODS actually holds.
+        current_hash = avu_content_hash(avus)
+
+        # Determine action: create if unseen; update if the folder changed OR
+        # the AVU content changed; otherwise nothing to do.
         if state.is_new(dirname):
             action = "create"
-        elif state.is_modified(dirname, modify_time):
+        elif state.is_modified(dirname, modify_time) or state.is_avu_changed(dirname, current_hash):
             action = "update"
         else:
             stats["skipped"] += 1
             continue
 
         try:
-            avus = irods.get_collection_metadata(path, folder_info=entry)
-
             try:
                 get_title(avus)
             except KeyError:
@@ -306,7 +342,7 @@ def sync_source(
             # Update state
             irods_info = {"modify_time": modify_time}
             if ckan_id:
-                state.mark_synced(dirname, irods_info, ckan_id)
+                state.mark_synced(dirname, irods_info, ckan_id, avu_hash=current_hash)
 
         except Exception as e:
             logger.error("Error processing %s: %s", dirname, e, exc_info=True)

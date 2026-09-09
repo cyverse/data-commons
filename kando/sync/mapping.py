@@ -4,6 +4,35 @@ Pure functions to map iRODS AVU metadata to CKAN dataset fields.
 Extracted from kando/helpers/migration.py -- no external service imports.
 """
 
+import hashlib
+import json
+
+# Folder-derived keys that live in the metadata dict but are not AVUs. They are
+# excluded from the AVU content hash: folder timestamps change on file activity
+# (already tracked via irods_modify_time) and would cause spurious "AVU changed"
+# updates, and de_path is derived from the listing, not the metadata.
+_NON_AVU_KEYS = {"de_path", "date_created", "date_modified"}
+
+
+def avu_content_hash(dataset_metadata: dict) -> str:
+    """
+    Stable SHA-1 hash of the AVU key/values in a metadata dict.
+
+    Used by the sync to detect metadata-only edits, which do NOT bump the
+    iRODS collection's modify_time. Excludes folder-derived keys and sorts
+    keys (and list values) so the hash is order-independent.
+    """
+    normalized = {}
+    for key, value in dataset_metadata.items():
+        if key in _NON_AVU_KEYS:
+            continue
+        if isinstance(value, list):
+            normalized[key] = sorted(str(v) for v in value)
+        else:
+            normalized[key] = str(value)
+    blob = json.dumps(normalized, sort_keys=True)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()
+
 
 def clean_dataset_metadata(dataset_metadata: dict) -> dict:
     """Remove tabs from all string values in the metadata dict."""

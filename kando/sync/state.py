@@ -47,15 +47,29 @@ class SyncState:
             return True
         return entry.get("irods_modify_time") != modify_time
 
+    def is_avu_changed(self, dirname: str, avu_hash: str) -> bool:
+        """
+        True if the AVU content hash differs from what was last synced.
+
+        Detects metadata-only edits (title, citation, etc.) that do not change
+        the iRODS collection's modify_time. Datasets synced before hashing was
+        added have no stored hash; treat them as changed so they pick one up.
+        """
+        entry = self.data["datasets"].get(dirname)
+        if entry is None:
+            return True
+        return entry.get("avu_hash") != avu_hash
+
     def get_ckan_id(self, dirname: str) -> str | None:
         entry = self.data["datasets"].get(dirname)
         if entry:
             return entry.get("ckan_dataset_id")
         return None
 
-    def mark_synced(self, dirname: str, irods_info: dict, ckan_id: str):
+    def mark_synced(self, dirname: str, irods_info: dict, ckan_id: str, avu_hash: str = ""):
         self.data["datasets"][dirname] = {
             "irods_modify_time": irods_info.get("modify_time", ""),
+            "avu_hash": avu_hash,
             "ckan_dataset_id": ckan_id,
             "last_synced": datetime.now(timezone.utc).isoformat(),
         }
