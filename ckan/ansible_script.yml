@@ -142,6 +142,23 @@
         state: started
         enabled: true
 
+    # Stock postgresql.conf ships log_min_duration_statement=0 (logs every
+    # statement), which once filled the disk and took the cluster down.
+    - name: Disable per-statement query logging
+      become: yes
+      become_user: postgres
+      community.postgresql.postgresql_set:
+        name: log_min_duration_statement
+        value: "-1"
+      register: pg_log_setting
+
+    - name: Reload PostgreSQL to apply logging change
+      become: yes
+      become_user: postgres
+      community.postgresql.postgresql_query:
+        query: SELECT pg_reload_conf()
+      when: pg_log_setting.changed
+
     - name: Start and enable Redis
       ansible.builtin.systemd:
         name: redis-server
